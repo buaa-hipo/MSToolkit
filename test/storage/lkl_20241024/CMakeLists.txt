@@ -1,0 +1,5 @@
+add_executable(backtrace_storage_test backtrace_test.cpp)
+target_include_directories(backtrace_storage_test PUBLIC ../../../lib/pse/include ../../../include)
+target_link_libraries(backtrace_storage_test PUBLIC FSL ral sql_backend backtrace)
+target_compile_options(backtrace_storage_test PRIVATE -fsanitize=address)
+target_link_options(backtrace_storage_test PRIVATE -fsanitize=address)

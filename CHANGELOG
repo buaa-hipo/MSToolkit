@@ -1,0 +1,8 @@
+# Change Log
+
+## 1.1.0 (2024-05-08)
+
+### Features
+
+* Implement unordered parallel record reader
+* Implement parallel variance analysis

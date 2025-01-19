@@ -1,0 +1,31 @@
+#!/bin/bash
+
+usage() { echo "Usage: $0 [-o <string>] ir_files" 1>&2; exit 1; }
+
+out_file="gvarp.txt"
+preserve=false
+while getopts "h:t:o:p" arg; do
+  case $arg in
+    h)
+      echo "usage"
+      ;;
+	o)
+	  out_file=${OPTARG}
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+INPUT=$@
+
+out_name_flag=$([ -n "${out_file}" ] && echo "gvarp-out-name=${out_file}" || echo "")
+
+for f in "${INPUT[@]}"; do
+    echo "** GVARP analysis of ${f}"
+    # the IR file will not be changed, so output is omitted
+    @LLVM_OPT@ -load ${BUILD_DIR}/lib/libGVARPPass.so\
+        -gvarp\
+        ${out_name_flag}\
+        < ${f}\
+        > /dev/null
+done

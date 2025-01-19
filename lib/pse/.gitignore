@@ -1,0 +1,6 @@
+thirdparty
+build
+.vscode
+.clang-format
+.local
+.cache

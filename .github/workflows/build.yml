@@ -1,0 +1,24 @@
+name: Build Script
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Create Build Environment
+      run: |
+        git clone https://github.com/spack/spack.git
+        . ./spack/share/spack/setup-env.sh
+        spack install dyninst papi mpi libunwind
+        spack load dyninst papi mpi libunwind
+        ./build.sh

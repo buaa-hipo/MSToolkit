@@ -1,0 +1,10 @@
+.vscode
+.idea
+cmake-build*
+build
+install
+thirdparty
+include/record/wrap_defines.h
+.clang-format
+*.log
+*.err

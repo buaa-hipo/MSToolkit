@@ -1,0 +1,216 @@
+#!/bin/bash
+
+function usage () {
+    echo "Usage: jsirun -o <measurement directory> <OPTIONS> -- <EXE> <ARGS>"
+    echo "<OPTIONS>:"
+    echo "  --backtrace "
+    echo "  --pmu (JSI_ENABLE_PMU need to be set)"
+    echo "  -samp_mode <(int)mode number>"
+    echo "  -samp_ratio <(int)sampling ratio>"
+    echo "  -samp_random <(int)random seed>"
+    echo "  -samp_time <(int)time in seconds>"
+    echo "  --samp_interval <(double)interval while sampling>"
+    echo "  --events <(string)PMU events>"
+    echo "  --enable_samp_temp"
+    echo "  --samp_temp_mode <MODE>"
+    echo "  --window_enable <int>"
+    echo "  --window_disable <int>"
+    echo "  --print_stg"
+    echo "  --samp_dynscale"
+    echo "  --collect_memory"
+}
+
+
+ENABLE_PRINT=true
+if [[ -v OMPI_COMM_WORLD_RANK ]]; then
+  if [[ ${OMPI_COMM_WORLD_RANK} != 0 ]]; then
+    ENABLE_PRINT=false
+  fi
+fi
+
+if ${ENABLE_PRINT}; then
+echo "================================"
+echo "Bootstrapping JSI Toolkit..."
+fi
+
+ROOT=$(dirname "$0")
+WRAPPER=$ROOT/libmpi_wrapper.so
+if  [ -f $ROOT/libaccl_tracer.so ]; then
+  WRAPPER="$WRAPPER $ROOT/libaccl_tracer.so"
+fi
+
+if ${ENABLE_PRINT}; then
+echo $ROOT
+echo $WRAPPER
+fi
+
+nowdate=$(date +%Y_%m_%d_%H_%M_%S)
+MEASUREMENT_DIR=measurement_$nowdate
+SAMPLING_MODE=1
+SAMPLING_RATIO=0
+SAMPLING_IFRANDOM=0
+SAMPLING_ONTIME=0
+
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -o|--out)
+      MEASUREMENT_DIR="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -h|--help)
+      usage
+      exit 1
+      ;;
+    --backtrace)
+      export JSI_ENABLE_BACKTRACE=ON
+      shift # past argument
+      ;;
+    --no-backtrace)
+      unset JSI_ENABLE_BACKTRACE
+      shift # past argument
+      ;;
+    --pmu)
+      export JSI_ENABLE_PMU=ON
+      shift # past argument
+      ;;
+    --no-pmu)
+      unset JSI_ENABLE_PMU
+      shift # past argument
+      ;;
+    --enable_samp_temp)
+      export JSI_TEMPORAL_SAMPLING=ON
+      shift
+      ;;
+    --samp_temp_mode)
+      export JSI_TEMPORAL_SAMPLING=ON
+      export JSI_TEMPORAL_SAMPLING_MODE="$2"
+      shift
+      shift
+      ;;
+    --window_enable)
+      export JSI_TEMPORAL_SAMPLING_WINDOW_ENABLE="$2"
+      shift
+      shift
+      ;;
+    --window_disable)
+      export JSI_TEMPORAL_SAMPLING_WINDOW_DISABLE="$2"
+      shift
+      shift
+      ;;
+    --print_stg)
+      export JSI_PRINT_STG=ON
+      shift
+      ;;
+    -samp_mode)
+      SAMPLING_MODE="$2"    # op=1: all sampling// op=2: specific sampling ratio// op=3: random sampling ratio
+      shift
+      shift
+      ;;
+    -samp_ratio)
+      SAMPLING_RATIO="$2"    # sampling ratio
+      shift
+      shift
+      ;;
+    -samp_random)
+      SAMPLING_IFRANDOM="$2"    # if random sampling, the value is the seed value generating original sampling list
+      shift
+      shift
+      ;;
+    -samp_time)
+      SAMPLING_ONTIME="$2"    # if time sampling, the value is the sampling time with metric second
+      shift
+      shift
+      ;;
+    --samp_dynscale)
+      export JSI_DYNSCALE=ON
+      shift # past argument
+      ;;
+    --samp_interval)
+      export JSI_ENABLE_SAMPLING=ON
+      export JSI_SAMPLING_INTERVAL="$2"
+      shift
+      shift
+      ;;
+    --events)
+      export JSI_COLLECT_PMU_EVENT="$2"
+      export JSI_ENABLE_PMU=ON
+      shift
+      shift
+      ;;
+    --collect_memory)
+      if  [ -f $ROOT/libmemory_wrapper.so ]; then
+        WRAPPER="$WRAPPER $ROOT/libmemory_wrapper.so"
+      else
+        echo "Memory wrapper not found"
+        exit 1
+      fi
+      shift # past argument
+      ;;
+    --enable_sample)
+      if  [ -f $ROOT/libsampling.so ]; then
+        WRAPPER="$WRAPPER $ROOT/libsampling.so"
+        export JSI_ENABLE_SAMPLING=ON
+      else
+        echo "Sampling component not found"
+        exit 1
+      fi
+      shift # past argument
+      ;;
+      
+    --)
+      shift # past argument
+      CMD=$*
+      break
+      ;;
+    -*|--*)
+      if ${ENABLE_PRINT}; then
+        echo "Unknown option $1"
+        usage
+      fi
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+export JSI_MEASUREMENT_DIR=$MEASUREMENT_DIR
+export JSI_SAMPLING_MODE=$SAMPLING_MODE
+export JSI_SAMPLING_RATIO=$SAMPLING_RATIO
+export JSI_SAMPLING_IFRANDOM=$SAMPLING_IFRANDOM
+export JSI_SAMPLING_ONTIME=$SAMPLING_ONTIME
+
+if ${ENABLE_PRINT}; then
+  echo "Measurement Directory: $MEASUREMENT_DIR"
+  if [[ ${JSI_ENABLE_BACKTRACE+x} ]]; then
+    echo "Backtrace enabled"
+  fi
+  if [[ ${JSI_ENABLE_PMU+x} ]]; then
+    echo "PMU collecting enabled"
+    echo "Event List: $JSI_COLLECT_PMU_EVENT"
+  fi
+  if [[ ${JSI_ENABLE_SAMPLING+x} ]]; then
+    echo "Sample collecting enabled"
+    echo "Sampling interval: $JSI_SAMPLING_INTERVAL"
+  fi
+fi
+mkdir -p $MEASUREMENT_DIR
+
+export LD_PRELOAD=$WRAPPER
+if ${ENABLE_PRINT}; then
+  echo "PRELOAD library: $LD_PRELOAD"
+  echo "Executing command: $CMD"
+  echo "================================"
+fi
+
+# export JSI_COLLECT_PMU_EVENT=PAPI_TOT_INS,PAPI_TOT_CYC
+# export JSI_COLLECT_PMU_EVENT=$PMU_EVENTS
+
+$CMD

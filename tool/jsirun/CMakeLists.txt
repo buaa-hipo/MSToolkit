@@ -1,0 +1,1 @@
+install(PROGRAMS jsirun DESTINATION bin RENAME jsirun)

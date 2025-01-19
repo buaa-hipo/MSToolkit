@@ -1,0 +1,43 @@
+#!/bin/bash
+set -e
+usage() { echo "Usage: $0 [-o <string>] ir_files" 1>&2; exit 1; }
+
+out_file="gvarp.txt"
+preserve=false
+while getopts "h:t:o:p" arg; do
+  case $arg in
+    h)
+      echo "usage"
+      ;;
+	o)
+	  out_file=${OPTARG}
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+INPUT=$@
+
+out_name_flag=$([ -n "${out_file}" ] && echo "-gvarp-out-name=${out_file}" || echo "")
+BUILD_DIR="@CMAKE_INSTALL_PREFIX@"
+
+TMP_FILE=__hip_offload_bundle.id
+
+for f in "${INPUT[@]}"; do
+    echo "** GVARP analysis of ${f}"
+    ir_file_name="${f%.*}.ll"
+    ir_dev_file_name="${f%.*}.device.ll"
+    @LLVM_CLANGXX@ -g -S -emit-llvm -c ${f} -o ${ir_file_name}
+    grep __CLANG_OFFLOAD_BUNDLE____START__ ${ir_file_name} | awk '{ print $3 }' | grep hip | head -n 1 > ${TMP_FILE}
+    HIP_BUNDLE_ID=`cat ${TMP_FILE}`
+    @LLVM_CLANG_OFFLOAD_BUNDLER@ --unbundle --inputs=${ir_file_name} --targets=${HIP_BUNDLE_ID} --type=ll --outputs=${ir_dev_file_name}
+    # the IR file will not be changed, so output is omitted
+    @LLVM_OPT@ -load ${BUILD_DIR}/lib/libGVARPAnalysisPass.so\
+        -gvarp\
+        ${out_name_flag}\
+        < ${ir_dev_file_name}\
+        > /dev/null
+    rm -f ${ir_file_name}
+    rm -f ${ir_dev_file_name}
+    rm -f ${TMP_FILE}
+done

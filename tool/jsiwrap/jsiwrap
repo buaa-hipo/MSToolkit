@@ -1,0 +1,63 @@
+#!/bin/bash
+
+function usage () {
+    echo "Usage: jsiwrap -i <EXE> -l <LIB> -f <FUNC>"
+}
+
+ARCH=$(uname -m)
+
+INPUT=
+FUNC=
+LINK_LIB=
+
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -h|--help)
+      usage
+      exit 1
+      ;;
+    -i|--input)
+      INPUT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -f|--func)
+      FUNC="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -l|--link)
+      LINK_LIB="$2"
+      shift
+      shift # past value
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      usage
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+if [[ $ARCH == aarch64 ]]
+then
+    echo "ARCH: AARCH64"
+    echo "Executing bira -i $INPUT -l $LINK_LIB -f $FUNC"
+    bira -i $INPUT -l $LINK_LIB -f $FUNC
+fi
+
+if [[ $ARCH == x86_64 ]]
+then
+    echo "ARCH: X86_64"
+    echo "Executing jsiwrap-x86 -- $INPUT -f $FUNC"
+    export TRACETOOL_LIB=$LINK_LIB
+    jsiwrap-x86 -- $INPUT -f $FUNC
+fi

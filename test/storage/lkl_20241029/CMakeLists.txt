@@ -1,0 +1,5 @@
+add_executable(meta_storage_test meta_test.cpp)
+target_include_directories(meta_storage_test PUBLIC ../../../lib/pse/include ../../../include)
+target_link_libraries(meta_storage_test PUBLIC FSL ral sql_backend record_meta)
+# target_compile_options(meta_storage_test PRIVATE -fsanitize=address)
+# target_link_options(meta_storage_test PRIVATE -fsanitize=address)

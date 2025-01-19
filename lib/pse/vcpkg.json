@@ -1,0 +1,11 @@
+{
+  "dependencies": [
+    "backward-cpp",
+    "boost-pfr",
+    "fmt",
+    "magic-enum",
+    "spdlog",
+    "sqlite3",
+    "range-v3"
+  ]
+}

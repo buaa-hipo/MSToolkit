@@ -1,0 +1,188 @@
+#!/bin/bash
+ulimit -c 0
+
+die() {
+    exit_code=$?
+    local prefix=$1
+    local message=$2
+    if [ $exit_code -eq 124 ]; then
+        echo -e "$prefix \e[31m [TIMEOUT] \e[0m $message" >&2
+    else
+        echo -e "$prefix \e[31m [FAILED] \e[0m $message" >&2
+    fi
+    exit 1
+}
+
+fail() {
+    exit_code=$?
+    local prefix=$1
+    local message=$2
+    if [ $exit_code -eq 124 ]; then
+        echo -e "$prefix \e[31m [TIMEOUT] \e[0m $message" >&2
+    else
+        echo -e "$prefix \e[31m [FAILED] \e[0m $message" >&2
+    fi
+    export HAS_FAILED=true
+    export HAS_FAILED_PARAM=true
+    export OK_STATE=false
+}
+
+ok() {
+    local prefix=$1
+    local message=$2
+    echo -e "$prefix \e[32m [PASSED] \e[0m $message"
+    export OK_STATE=true
+}
+
+# Directory containing the NPB binaries
+BIN_DIR="bin"
+
+# Check if the directory exists
+if [ ! -d "$BIN_DIR" ]; then
+    echo "Error: Directory '$BIN_DIR' does not exist. Please compile the NPB benchmarks first."
+    exit 1
+fi
+
+# Navigate to the bin directory
+cd "$BIN_DIR" || exit
+
+LOG_DIR=`pwd`/log
+mkdir -p $LOG_DIR
+
+MPI_PREFIX="mpirun -n 4 "
+MEASUREMENT_DIR="collect"
+
+# Define profiling parameter sets and corresponding analysis commands
+declare -A PARAM_SETS
+PARAM_SETS["--enable_sample"]=""
+PARAM_SETS["--samp_interval;1.2"]=""
+PARAM_SETS["--events;PAPI_TOT_INS,PAPI_TOT_CYC"]=""
+# PARAM_SETS["param3"]="analysis_command3"
+
+# Function to generate all combinations of parameters
+generate_combinations() {
+    local params=($@)
+    local num_params=${#params[@]}
+    # echo =====================================
+    # echo num_params $num_params params ${params[@]}
+    # echo =====================================
+    for ((i=1; i<(1<<num_params); i++)); do
+        combo=""
+        for ((j=0; j<num_params; j++)); do
+            if ((i & (1<<j))); then
+                combo+="${params[j]}#"
+            fi
+        done
+        echo "$combo"
+    done
+}
+
+
+# Execute each binary in the directory
+param_keys=(${!PARAM_SETS[@]})
+combinations=$(generate_combinations "${param_keys[@]}")
+
+echo ========= testing candidate =========
+for param_combo in $combinations; do
+    echo $(echo $param_combo | sed "s/;/ /g" | sed "s/#/ /g")
+done <<< "$combinations"
+echo =====================================
+
+echo Begin tesing...
+rm -rf $MEASUREMENT_DIR
+
+# export JSI_COLLECT_PMU_EVENT=PAPI_TOT_INS
+TOOL_PREFIX="jsirun -o $MEASUREMENT_DIR --backtrace -- "
+# echo "RUNNING with tool prefix: ${TOOL_PREFIX}"
+echo "Testing default parameter: ${TOOL_PREFIX}"
+export HAS_FAILED=false
+export HAS_FAILED_PARAM=false
+for binary in *; do
+    # Check if the file is executable
+    if [[ -x "$binary" && ! -d "$binary" ]]; then
+        BIN_LOG_DIR="${LOG_DIR}/log.${binary}.dir"
+        mkdir -p ${BIN_LOG_DIR}
+        log_file="jsirun_default.log"
+        echo ">> Executing $binary with default parameters: ... (log: ${BIN_LOG_DIR})"
+        { time ${MPI_PREFIX} "./$binary" > /dev/null 2>&1; } 2> ${BIN_LOG_DIR}/native_time.txt
+        native_time_sec=$(awk '/real/ {print$2}' ${BIN_LOG_DIR}/native_time.txt | awk -F'm' '{print $1 * 60 +$2}' | awk -F's' '{print $1}')
+        upper_time_sec=$(awk '/real/ {print$2}' ${BIN_LOG_DIR}/native_time.txt | awk -F'm' '{print $1 * 1200 +$2 * 20}' | awk -F's' '{print $1}')
+        echo ">> native execution time: $native_time_sec, upper timeout: $upper_time_sec"
+        # Run the binary with profiling and parameters, log output
+        { time { timeout ${upper_time_sec}s $MPI_PREFIX $TOOL_PREFIX "./$binary" > "${BIN_LOG_DIR}/$log_file" 2>&1 \
+            && ok ">>>>" "JSIRUN" || fail ">>>>" "JSIRUN"; } 2>&1 ;} 2> ${BIN_LOG_DIR}/jsirun-${log_name}_time.txt
+        if $OK_STATE; then
+            jsirun_time_sec=$(awk '/real/ {print$2}' ${BIN_LOG_DIR}/jsirun-${log_name}_time.txt | awk -F'm' '{print $1 * 60 +$2}' | awk -F's' '{print $1}')
+            overhead=$(echo "scale=3; ${jsirun_time_sec} / ${native_time_sec}" | bc)
+            echo ">>>>>> OVERHEAD: $overhead"
+        fi
+        # Run the corresponding analysis command
+        jsiread -f -i $MEASUREMENT_DIR -m 1 -o ${BIN_LOG_DIR}/readable > ${BIN_LOG_DIR}/native-jsiread.log 2>&1 && ok ">>>>" "jsiread" || fail ">>>>" "jsiread"
+        rm -rf $MEASUREMENT_DIR readable
+    else
+        echo ">> Skipping $binary (not executable)."
+    fi
+done
+
+if ${HAS_FAILED_PARAM}; then
+    echo -e "\e[31m [FAILED] \e[0m Test default: ${TOOL_PREFIX}"
+else
+    echo -e "\e[32m [PASSED] \e[0m Test default: ${TOOL_PREFIX}"
+fi
+
+for param_combo_enc in $combinations; do
+    export HAS_FAILED_PARAM=false
+    param_combo=$(echo $param_combo_enc | sed "s/#/ /g")
+    real_param=$(echo $param_combo | sed "s/;/ /g")
+    TOOL_PREFIX="jsirun -o $MEASUREMENT_DIR --backtrace $real_param -- "
+    # echo "RUNNING with tool prefix: ${TOOL_PREFIX}"
+    echo "Testing parameters: ${real_param}"
+    for binary in *; do
+        # Check if the file is executable
+        if [[ -x "$binary" && ! -d "$binary" ]]; then
+            BIN_LOG_DIR="${LOG_DIR}/log.${binary}.dir"
+            echo ">> Executing $binary with parameters: $real_param ... (log: ${BIN_LOG_DIR})"
+            log_name="$(echo "$real_param" | sed 's/--//g' | tr ' ' '_')"
+            log_file="jsirun_${log_name}.log"
+            native_time_sec=$(awk '/real/ {print$2}' ${BIN_LOG_DIR}/native_time.txt | awk -F'm' '{print $1 * 60 +$2}' | awk -F's' '{print $1}')
+            upper_time_sec=$(awk '/real/ {print$2}' ${BIN_LOG_DIR}/native_time.txt | awk -F'm' '{print $1 * 1200 +$2 * 20}' | awk -F's' '{print $1}')
+            echo ">> native execution time: $native_time_sec, upper timeout: $upper_time_sec"
+            # Run the binary with profiling and parameters, log output
+            { time { timeout ${upper_time_sec}s $MPI_PREFIX $TOOL_PREFIX "./$binary" > "${BIN_LOG_DIR}/$log_file" 2>&1 \
+                && ok ">>>>" "JSIRUN" || fail ">>>>" "JSIRUN"; } 2>&1 ;} 2> ${BIN_LOG_DIR}/jsirun-${log_name}_time.txt
+            if $OK_STATE; then
+                jsirun_time_sec=$(awk '/real/ {print$2}' ${BIN_LOG_DIR}/jsirun-${log_name}_time.txt | awk -F'm' '{print $1 * 60 +$2}' | awk -F's' '{print $1}')
+                overhead=$(echo "scale=3; ${jsirun_time_sec} / ${native_time_sec}" | bc)
+                echo ">>>>>> OVERHEAD: $overhead"
+            fi
+            # Run the binary and capture its output to a log file
+            jsiread -f -i $MEASUREMENT_DIR -m 1 -o ${BIN_LOG_DIR}/readable > ${BIN_LOG_DIR}/jsiread-${log_name}.log 2>&1 && ok ">>>>" "jsiread" || fail ">>>>" "jsiread"
+            for param in $param_combo; do
+                analysis_cmd=${PARAM_SETS[$param]}
+                if [[ -z $analysis_cmd ]]; then
+                    continue
+                else
+                    echo ">>>> Running analysis: $analysis_cmd ..."
+                    # Run the corresponding analysis command
+                    $analysis_cmd > "${BIN_LOG_DIR}/analysis-${log_name}-$(date +'%Y%m%d_%H%M%S').log" 2>&1 && ok ">>>>" "analysis $analysis_cmd" || fail ">>>>" "analysis $analysis_cmd"
+                fi
+            done
+            rm -rf $MEASUREMENT_DIR
+        else
+            echo ">> Skipping $binary (not executable)."
+        fi
+    done
+    if ${HAS_FAILED_PARAM}; then
+        echo -e "\e[31m [FAILED] \e[0m Test: ${real_param}"
+    else
+        echo -e "\e[32m [PASSED] \e[0m Test: ${real_param}"
+    fi
+done
+
+# Navigate back to the original directory
+cd ../ > /dev/null
+if ${HAS_FAILED}; then
+    echo -e "\e[31m [FAILED] \e[0m All executables in $BIN_DIR have been processed."
+else
+    echo -e "\e[32m [PASSED] \e[0m All executables in $BIN_DIR have been processed."
+fi

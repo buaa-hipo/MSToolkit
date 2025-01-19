@@ -1,0 +1,156 @@
+# record type defines
+# ACCL 
+FOR ACCL
+TYPE record_activity_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+END TYPE
+
+# Overwrite type defines
+FOR hipLaunchKernel
+TYPE record_activity_launch_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    STRUCT blockNum : "{x},{y},{z}"
+        uint32_t x : NONE
+        uint32_t y : NONE
+        uint32_t z : NONE
+    END STRUCT
+    STRUCT blockDim : "{x},{y},{z}"
+        uint32_t x : NONE
+        uint32_t y : NONE
+        uint32_t z : NONE
+    END STRUCT
+    uint32_t sharedMemBytes : ""
+    const void* stream : ""
+END TYPE
+
+FOR hipMemcpyAsync
+TYPE record_activity_memcpy_async_t : record_t
+    uint64_t correlation_id : "Correlation ID" 
+    const void* dst : ""
+    const void* src : ""
+    size_t sizeBytes : ""
+    uint32_t kind : ""
+    const void* stream : ""
+END TYPE
+
+FOR hipMemcpy
+TYPE record_activity_memcpy_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void* dst : ""
+    const void* src : ""
+    size_t sizeBytes : ""
+    uint32_t kind : ""
+END TYPE
+
+# MPI
+FOR MPI_Send,MPI_Recv
+TYPE record_comm_t : record_t
+    uint64_t datatype : "Data type"
+    int typesize : "Type Size"
+	int dest : "Dest/Src"
+	int tag : "Tag"
+    int count : "Count"
+    uint64_t comm : "MPI Comm"
+END TYPE
+
+FOR MPI_Comm_rank
+TYPE record_comm_rank_t : record_t
+    uint64_t comm : "MPI Comm"
+    int rank : "MPI Rank"
+END TYPE
+
+FOR MPI_Comm_dup
+TYPE record_comm_dup_t : record_t
+    uint64_t comm : "MPI Comm"
+    uint64_t new_comm : "New MPI Comm"
+END TYPE
+
+FOR MPI_Comm_split
+TYPE record_comm_split_t : record_t
+    uint64_t comm : "MPI Comm"
+    uint64_t new_comm : "New MPI Comm"
+    int color : "Color"
+END TYPE
+
+FOR MPI_Alltoall, MPI_Alltoallv
+TYPE record_all2all_t : record_t
+    uint64_t datatype : "Data type"
+    int typesize : "Type Size"
+	int sendcnt : "Send count"
+	int recvcnt : "Recv count"
+    uint64_t comm : "MPI Comm"
+END TYPE
+
+FOR MPI_Allreduce
+TYPE record_allreduce_t : record_t
+    uint64_t datatype : "Data type"
+    int typesize : "Type Size"
+	int count : "Count"
+	uint64_t op : "MPI Op"
+    uint64_t comm : "MPI Comm"
+END TYPE
+
+FOR MPI_Reduce
+TYPE record_reduce_t : record_t
+    uint64_t datatype : "Data type"
+    int typesize : "Type Size"
+	int count : "Count"
+    int root : "Root"
+	uint64_t op : "MPI Op"
+    uint64_t comm : "MPI Comm"
+END TYPE
+
+FOR MPI_Bcast
+TYPE record_bcast_t : record_t
+    uint64_t datatype : "Data type"
+    int typesize : "Type Size"
+	int count : "Count"
+    int root : "Root"
+    uint64_t comm : "MPI Comm"
+END TYPE
+
+FOR MPI_Barrier
+TYPE record_barrier_t : record_t
+    uint64_t comm : "MPI Comm"
+END TYPE
+
+FOR MPI_Isend, MPI_Irecv
+TYPE record_comm_async_t : record_t
+    uint64_t datatype : "Data type"
+    int typesize : "Type Size"
+	int dest : "Dest/Src"
+	int tag : "Tag"
+    int count : "Count"
+    uint64_t comm : "MPI Comm"
+    uint64_t request : "MPI Request"
+END TYPE
+
+FOR MPI_Wait
+TYPE record_comm_wait_t : record_t
+    uint64_t request : "MPI Request"
+END TYPE
+
+# Memory
+FOR Memory_Malloc
+TYPE record_memory_malloc : record_t
+    const void* ptr : "PTR"
+    size_t size_bytes : "Size"
+END TYPE
+
+FOR Memory_Calloc
+TYPE record_memory_calloc : record_t
+    const void* ptr : "PTR"
+    size_t size_bytes : "Size"
+END TYPE
+
+FOR Memory_Realloc
+TYPE record_memory_realloc : record_t
+    const void* ptr : "PTR"
+    const void* newptr : "New PTR"
+    size_t size_bytes : "Size"
+END TYPE
+
+FOR Memory_Free
+TYPE record_memory_free : record_t
+    const void* ptr : "PTR"
+END TYPE

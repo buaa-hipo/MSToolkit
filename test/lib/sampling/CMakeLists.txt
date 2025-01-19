@@ -1,0 +1,1 @@
+add_executable(code2measure code2measure.cpp)
