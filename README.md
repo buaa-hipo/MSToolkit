@@ -1,4 +1,4 @@
-# Just Scale-it Toolkit
+# Multi-Scale Toolkit
 
 ## Build
 
