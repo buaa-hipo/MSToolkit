@@ -9,6 +9,7 @@
 #include "record/record_meta.h"
 #include <atomic>
 
+#define STORAGE_VERSION 1
 
 // 4KB preallocate buffer size
 // MOVE TO RECORD_AREA.H
@@ -29,7 +30,7 @@
 
 extern bool _jsi_record_inited;
 extern FILE *_jsi_record_file;
-extern RecordArea *area;
+// extern RecordArea *area;
 extern RecordMeta *meta;
 extern bool jsi_pmu_enabled;
 extern bool jsi_backtrace_enabled;

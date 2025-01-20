@@ -423,13 +423,15 @@ void RecordReader::section_load(const char *dir, const char* dwarf_dir, bool ena
             }
 
         }
-        for (auto process_dir_iter = backtrace_dir->begin(); process_dir_iter != backtrace_dir->end(); ++process_dir_iter)
-        {
-            spdlog::info("process_dir_iter desc: {}", process_dir_iter.getDesc());
-            auto process_dir = process_dir_iter.getDirSection();
-            if (enable_backtrace)
+        if (backtrace_dir!=nullptr) {
+            for (auto process_dir_iter = backtrace_dir->begin(); process_dir_iter != backtrace_dir->end(); ++process_dir_iter)
             {
-                load_backtrace(process_dir, node_id, dwarf_dir, enable_dbinfo);
+                spdlog::info("process_dir_iter desc: {}", process_dir_iter.getDesc());
+                auto process_dir = process_dir_iter.getDirSection();
+                if (enable_backtrace)
+                {
+                    load_backtrace(process_dir, node_id, dwarf_dir, enable_dbinfo);
+                }
             }
         }
     }

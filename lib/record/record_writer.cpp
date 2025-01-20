@@ -13,6 +13,7 @@
 #include <memory>
 #include <unordered_map>
 #include <list>
+#include "utils/configuration.h"
 
 #ifdef ENABLE_BACKTRACE
 #include "instrument/backtrace.h"
@@ -37,7 +38,6 @@ using namespace pse;
 
 bool _jsi_record_inited = false;
 FILE *_jsi_record_file;
-RecordArea *area;
 RecordMeta *meta;
 
 DECLARE_GLOBAL_VARIABLE(std::unique_ptr<pse::ral::BackendInterface>, _backend);
@@ -97,48 +97,7 @@ __attribute__((constructor (RECORD_INIT_PRIORITY)))
 void recordWriterCacheInit() {
     JSI_LOG(JSILOG_INFO, "Initialize Record Writer Library.\n");
     RecordWriter::init();
-#ifdef ENABLE_PMU
-    const char* pmu_enabled = getenv("JSI_ENABLE_PMU");
-    if (pmu_enabled) {
-        JSI_INFO("PMU collecting enabled inside program\n");
-        jsi_pmu_enabled = true;
-        if (!pmu_collector_init()) {
-            JSI_ERROR("PMU collecting initialization failed. Aborting...\n");
-        }
-        jsi_pmu_num = pmu_collector_get_num_events();
-    }
-#endif
-#ifdef ENABLE_BACKTRACE
-    const char* bt_enabled = getenv("JSI_ENABLE_BACKTRACE");
-    if (bt_enabled) {
-        JSI_INFO("Backtrace enabled inside program\n");
-        jsi_backtrace_enabled = true;
-        const char* bt_max_depth = getenv("JSI_BACKTRACE_MAX_DEPTH");
-        if (bt_max_depth) {
-            char* end_ptr;
-            backtrace_max_size = (int) std::strtol(bt_max_depth, &end_ptr, 10);
-            if (*end_ptr != '\0') {
-                JSI_WARN(
-                        "Invalid JSI_BACKTRACE_MAX_DEPTH (expect an integer, but get \"%s\") "
-                        "encountered and will be ignored, the max depth is set to `%d` by default",
-                        bt_max_depth, BACKTRACE_MAX_SIZE_DEFAULT);
-                backtrace_max_size = BACKTRACE_MAX_SIZE_DEFAULT;
-            }
-        }
-        backtrace_init_recording(backtrace_max_size);
-        // TODO (fty): Use `RecordWriter::writeMeta` when it is implemented
-        //             in the future to dump the backtrace db as metadata,
-        //             instead of writing to manually created files.
-        // std::string file_path;
-        // char* measurement_path = getenv("JSI_MEASUREMENT_DIR");
-        // if (measurement_path) {
-        //     file_path += std::string(measurement_path);
-        // }
-        // file_path += "/backtrace_db." + _ConfigHelper::get_identifier() + ".bin";
-        // JSI_INFO("Backtrace will dumped to %s\n", file_path.c_str());
-        // _bt_fp = fopen(file_path.c_str(), "w");
-    }
-#endif
+    // record the process start event
     uint64_t t = get_tsc_raw();
     record_t* rec = (record_t*) ALLOCATE(
         sizeof(record_t) + sizeof(uint64_t) * 2 * jsi_pmu_num);
@@ -215,7 +174,7 @@ void recordWriterCacheFinalize() {
 inline void save_hostinfo() {
     RecordWriter::metaSectionStart("HOST INFO");
     RecordWriter::metaStore("HOSTNAME", _ConfigHelper::get_hostname());
-    RecordWriter::metaStore("PID", std::to_string(_ConfigHelper::get_pid()));
+    RecordWriter::metaStore("PID", (int32_t)_ConfigHelper::get_pid());
     RecordWriter::metaSectionEnd("HOST INFO");
 }
 
@@ -228,10 +187,11 @@ void RecordWriter::init(const std::string& identifier) {
         JSI_WARN("[RecordWriter::init(id=%s)] Already initialized!\n", identifier.c_str());
         return;
     }
-    // area = new RecordArea(identifier,DATA_MODEL);
-    area = NULL;
-    // meta = new RecordMeta(identifier);
     _jsi_record_inited = true;
+
+    jsi_backtrace_enabled = EnvConfigHelper::get_enabled("JSI_ENABLE_BACKTRACE", false);
+    jsi_pmu_enabled = EnvConfigHelper::get_enabled("JSI_ENABLE_PMU", false);
+
     std::string file_path;
     std::string file_sym_path;
     char* measurement_path = getenv("JSI_MEASUREMENT_DIR");
@@ -248,25 +208,65 @@ void RecordWriter::init(const std::string& identifier) {
     backend = std::make_unique<pse::ral::BackendWrapper<pse::fsl::RawSectionBackend>>(std::move(raw_backend));
     root = std::move(backend->openRootSection());
     auto trace_dir = root->openDirSection(StaticSectionDesc::TRACE_SEC_ID, true);
-    auto backtrace_dir = root->openDirSection(StaticSectionDesc::BACKTRACE_SEC_ID, true);
     process_trace_dir = trace_dir->openDirSection(_ConfigHelper::get_pid(), true);
-    process_backtrace_dir = backtrace_dir->openDirSection(_ConfigHelper::get_pid(), true);
+    if (jsi_backtrace_enabled) {
+        auto backtrace_dir = root->openDirSection(StaticSectionDesc::BACKTRACE_SEC_ID, true);
+        process_backtrace_dir = backtrace_dir->openDirSection(_ConfigHelper::get_pid(), true);
+    }
     if (backend->isLeader())
     {
         meta = new RecordMeta(root, false);
         RecordWriter::metaSectionStart("HOST INFO");
         RecordWriter::metaStore("HOSTNAME", _ConfigHelper::get_hostname());
-        RecordWriter::metaStore("VERSION", 1);
+        RecordWriter::metaStore("VERSION", STORAGE_VERSION);
         RecordWriter::metaSectionEnd("HOST INFO");
         delete meta;
     }
     meta = new RecordMeta(process_trace_dir, false);
 
-
-    // backend_ptr = backend.release();
-    // process_backtrace_dir_ptr = process_backtrace_dir.release();
     // save host information
     save_hostinfo();
+
+#ifdef ENABLE_PMU
+    if (jsi_pmu_enabled) {
+        JSI_INFO("PMU collecting enabled inside program\n");
+        if (!pmu_collector_init()) {
+            JSI_ERROR("PMU collecting initialization failed. Aborting...\n");
+        }
+        jsi_pmu_num = pmu_collector_get_num_events();
+    }
+#endif
+
+#ifdef ENABLE_BACKTRACE
+    if (jsi_backtrace_enabled) {
+        JSI_INFO("Backtrace enabled inside program\n");
+        const char* bt_max_depth = getenv("JSI_BACKTRACE_MAX_DEPTH");
+        if (bt_max_depth) {
+            char* end_ptr;
+            backtrace_max_size = (int) std::strtol(bt_max_depth, &end_ptr, 10);
+            if (*end_ptr != '\0') {
+                JSI_WARN(
+                        "Invalid JSI_BACKTRACE_MAX_DEPTH (expect an integer, but get \"%s\") "
+                        "encountered and will be ignored, the max depth is set to `%d` by default",
+                        bt_max_depth, BACKTRACE_MAX_SIZE_DEFAULT);
+                backtrace_max_size = BACKTRACE_MAX_SIZE_DEFAULT;
+            }
+        }
+        backtrace_init_recording(backtrace_max_size);
+        // TODO (fty): Use `RecordWriter::writeMeta` when it is implemented
+        //             in the future to dump the backtrace db as metadata,
+        //             instead of writing to manually created files.
+        // std::string file_path;
+        // char* measurement_path = getenv("JSI_MEASUREMENT_DIR");
+        // if (measurement_path) {
+        //     file_path += std::string(measurement_path);
+        // }
+        // file_path += "/backtrace_db." + _ConfigHelper::get_identifier() + ".bin";
+        // JSI_INFO("Backtrace will dumped to %s\n", file_path.c_str());
+        // _bt_fp = fopen(file_path.c_str(), "w");
+    }
+#endif
+
 }
 auto& get_thread_trace_dir()
 {
@@ -339,10 +339,11 @@ void RecordWriter::extStore(const void* record, size_t size)
 
 
 void *RecordWriter::allocate(size_t size) {
-    if (!_jsi_record_inited) { printf("Warning: allocate before initialization!\n"); }
-    //JSI_WARN("RecordWriter::allocate should not be called!");
-    char *ptr = (char *) (area->AreaAllocate(size));
-    return ptr;
+    JSI_ERROR("RecordWriter::allocate is diabled. DO NOT USE.\n");
+    // if (!_jsi_record_inited) { printf("Warning: allocate before initialization!\n"); }
+    // //JSI_WARN("RecordWriter::allocate should not be called!");
+    // char *ptr = (char *) (area->AreaAllocate(size));
+    // return ptr;
 }
 
 void RecordWriter::finalize() {

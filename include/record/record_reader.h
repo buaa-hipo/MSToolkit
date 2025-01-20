@@ -756,7 +756,7 @@ protected:
     RecordReader(int _model) : _model(_model) {}
 
 public:
-    RecordReader(const char *dir,int _model, const char* dwarf_dir = nullptr, bool enable_dbinfo = true, bool mpi_only = true, bool enable_backtrace = true);
+    RecordReader(const char *dir,int _model, const char* dwarf_dir = nullptr, bool enable_dbinfo = true, bool mpi_only = false, bool enable_backtrace = true);
 
     ~RecordReader();
 
