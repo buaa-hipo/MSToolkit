@@ -35,8 +35,8 @@ DirSection支持嵌套，通过一个32位int索引desc，所有的DirSection构
 StringSection为用于存储字符串的Section，其接口如下所示
 ```c++
 auto string_section = dir->openStringSection(desc, create);
-auto offset = string_sectioin->write(str);
-auto res2 = string_sectioin->read(str, offset, buf_len);
+auto offset = string_section->write(str);
+auto res2 = string_section->read(str, offset, buf_len);
 ```
 offset为字符串的唯一索引，写入字符串时write会返回该值，调用方应保存该值用于读取。读取时，三个参数分别为字符串缓冲区地址、索引与缓冲区长度，返回值为字符串长度。若缓冲区长度小于字符串长度则不会读取。
 

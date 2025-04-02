@@ -115,7 +115,12 @@ public:
 
     void *backtrace_context_ip(backtrace_context_t ctx) const;
 
+    void backtrace_set_max_size(int max_bt_size);
+
     // uint64_t backtrace_get_callsite();
+
+    int rank() const {return _rank;}
+    void set_rank(int r) { _rank = r;}
 
 private:
     BacktraceMode _mode;
@@ -123,6 +128,7 @@ private:
     std::vector<void *> _backtrace_buffer;
     std::vector<backtrace_node_t> _bt_nodes;
     int _max_bt_size;
+    int _rank;
 };
 
 }}// namespace jsi::toolkit

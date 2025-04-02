@@ -44,7 +44,7 @@ void read_test()
         assert(r.a == i);
         assert(r.b == i + 1);
         const R2 *r2 = (const R2 *)&r;
-        spdlog::info("r2: {}, {}", r2->pmus[0], r2->pmus[1]);
+        // spdlog::info("r2: {}, {}", r2->pmus[0], r2->pmus[1]);
         assert(r2->pmus[0] == i + 2);
         assert(r2->pmus[1] == i + 3);
         // assert(r.a == i);

@@ -87,15 +87,16 @@ public:
         auto tableIter = tableTypes.find(tableName);
         if (tableIter == tableTypes.end())
         {
-            spdlog::error("Try to insert values into a not existed table {}", tableName);
+            // spdlog::error("Try to insert values into a not existed table {}", tableName);
             throw std::invalid_argument("invalid table name");
         }
         if (std::type_index(typeid(T)) != tableIter->second)
         {
-            spdlog::error("Try to insert values into table {} with unmatched type: {} -> {}",
+            /* spdlog::error("Try to insert values into table {} with unmatched type: {} -> {}",
                           tableName,
                           typeid(T).name(),
                           tableIter->second.name());
+                          */
             throw std::invalid_argument("invalid record type for table");
         }
         auto iter = stmts.find(tableName);
@@ -113,23 +114,23 @@ public:
             auto code = sqlite3_prepare_v2(pdb, insertSQL.c_str(), insertSQL.size(), &stmt, NULL);
             if (code != SQLITE_OK)
             {
-                spdlog::error("can not compile sql statement {}: {}", insertSQL, sqlite3_errmsg(pdb));
+                // spdlog::error("can not compile sql statement {}: {}", insertSQL, sqlite3_errmsg(pdb));
                 throw std::invalid_argument("invalid sql statement");
             }
             stmts.emplace(tableName, stmt);
         }
         auto count = bind(stmt, data);
-        spdlog::debug("bind count: {}", count);
+        // spdlog::debug("bind count: {}", count);
         auto code = sqlite3_step(stmt);
         if (code != SQLITE_DONE && code != SQLITE_ROW)
         {
-            spdlog::error("can not step sql for table {}: {}", tableName, sqlite3_errmsg(pdb));
+            // spdlog::error("can not step sql for table {}: {}", tableName, sqlite3_errmsg(pdb));
             throw std::runtime_error("failed to step sql");
         }
         code = sqlite3_reset(stmt);
         if (code != SQLITE_OK)
         {
-            spdlog::error("failed to reset sqlite3 stmt");
+            // spdlog::error("failed to reset sqlite3 stmt");
             throw std::runtime_error("failed to reset sql stmt");
         }
     }
@@ -203,13 +204,13 @@ public:
         auto code = sqlite3_prepare_v2(pdb, sql.c_str(), sql.size(), &stmt, nullptr);
         if (code != SQLITE_OK)
         {
-            spdlog::error("failed to compile sql {}: {}", sql, sqlite3_errmsg(pdb));
+            // spdlog::error("failed to compile sql {}: {}", sql, sqlite3_errmsg(pdb));
             throw std::runtime_error("sql error");
         }
         code = sqlite3_step(stmt);
         if (code != SQLITE_ROW)
         {
-            spdlog::error("failed to step sql {}: {}", sql, sqlite3_errmsg(pdb));
+            // spdlog::error("failed to step sql {}: {}", sql, sqlite3_errmsg(pdb));
             throw std::runtime_error("sql error");
         }
         column_get<T>(stmt, data);

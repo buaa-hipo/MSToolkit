@@ -59,10 +59,10 @@ void ranges_test()
     // For our range, we cannot perform multiple-pass traversal.
     // Checking distance
     // auto distance = std::ranges::distance(view);
-    // spdlog::info("Distance: {}", distance);
+    // // spdlog::info("Distance: {}", distance);
     // Second distance check
     // distance = std::ranges::distance(view);
-    // spdlog::info("Distance (second check): {}", distance); // equal to zero
+    // // spdlog::info("Distance (second check): {}", distance); // equal to zero
 
     // view | ranges::to<std::vector<R1>>() results in a zero-length vector.
     // we can use ranges::views::take or ranges::views::transform (they return a new range) to transform the view to a vector correctly.
@@ -71,7 +71,7 @@ void ranges_test()
     auto transformed_view =
         view | ranges::views::transform([](const R1 &r) { return *(R2 *)&r; }) | ranges::to<std::vector<R2>>();
     std::vector<R2> vec{transformed_view.begin(), transformed_view.end()};
-    spdlog::info("{}", vec.size());
+    // spdlog::info("{}", vec.size());
     auto transformed_vector = pse::dsr::parallel_transform<R2>(vec, [](R2 &r) {
         r.r1.a = 100;
         return r;
@@ -82,7 +82,7 @@ void ranges_test()
         assert(r.r1.b == i + 1);
         assert(r.pmus[0] == i + 2);
         assert(r.pmus[1] == i + 3);
-        spdlog::info("{}", r.pmus[1]);
+        // spdlog::info("{}", r.pmus[1]);
         i++;
     }
 
@@ -102,7 +102,7 @@ void ranges_test()
     for (int i = 1; i < N; ++i)
     {
         assert(ints[i - 1] <= ints[i]); // operator <= will be used in here
-        // spdlog::info("{}", ints[i].b);
+        // // spdlog::info("{}", ints[i].b);
     }
 }
 

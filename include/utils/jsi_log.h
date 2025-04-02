@@ -15,9 +15,10 @@ enum JSILOG_LEVEL {
     JSILOG_DEBUG,
     JSILOG_ALL
 };
-#define LOG_LEVEL JSILOG_LEVEL::JSILOG_ALL
+#define LOG_LEVEL JSILOG_LEVEL::JSILOG_INFO
 #define JSI_LOG(level, format...) do { if(level<=LOG_LEVEL) fprintf(stderr, "[JSILOG] " format); } while(0)
 
+#define JSI_DEBUG(format...) JSI_LOG(JSILOG_DEBUG, format)
 #define JSI_INFO(format...) JSI_LOG(JSILOG_INFO, format)
 #define JSI_WARN(format...) JSI_LOG(JSILOG_WARN, format)
 #define JSI_ERROR(format...) do { \

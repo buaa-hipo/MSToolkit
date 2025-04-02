@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 bool is_force = false;
 std::string input_dir;
 std::string dump_dir;
-std::string output;
+std::string output_dir;
 bool pretty_print = false;
 
 void parse(int argc, char* argv[]) {
@@ -19,14 +19,14 @@ void parse(int argc, char* argv[]) {
                              "memory_analysis need data collected by memory_wrapper");
     options.add_options()
             ("f,force", "Force to overwrite the output file if already exists.")
-            ("p,pretty_print", "Print readable report.")
+            ("p,pretty_print", "Print readable report in stdout.")
             ("h,help", "Print help")
-            ("i,input", "data collected by memory_wraaper",
+            ("i,input", "data collected by memory_wrapper",
                          cxxopts::value<std::string>())
             ("d,line_info_dump", "Input line info directory dumped by dwarf_line_info_dump",
                          cxxopts::value<std::string>())
-            ("o,output", "Output file to store the chrome trace json outputs",
-                         cxxopts::value<std::string>()->default_value("memory_report.txt"))
+            ("o,output", "Output dir to store the chrome trace outputs after analysis",
+                         cxxopts::value<std::string>())
             ;
 
     try {
@@ -48,14 +48,25 @@ void parse(int argc, char* argv[]) {
         }
         if (result.count("line_info_dump") >= 1) {
             if (result.count("line_info_dump") > 2) {
-                std::cout << "Warning: multiple input line info directory configured. Only use the last one!"
+                std::cout << "Warning: multiple line line info directory configured. Only use the last one!"
                           << std::endl;
             }
             dump_dir = result["line_info_dump"].as<std::string>();
         } else {
             std::cout << "-d or --line_info_dump did not specified!" << std::endl;
         }
-        output = result["output"].as<std::string>();
+        // output = result["output"].as<std::string>();
+        if (result.count("output") >= 1) {
+            if (result.count("output") > 2) {
+                std::cout << "Warning: multiple output directory configured. Only use the last one!"
+                          << std::endl;
+            }
+            output_dir = result["output"].as<std::string>();
+        } else {
+            std::cout << "-o or --output must be specified!" << std::endl;
+            exit(1);
+        }
+
         if (result.count("force")) {
             is_force = true;
         }
@@ -66,7 +77,7 @@ void parse(int argc, char* argv[]) {
         std::cout << "\t"
                   << "Input: " << input_dir << std::endl;
         std::cout << "\t"
-                  << "Output: " << output << std::endl;
+                  << "Output: " << output_dir << std::endl;
     } catch (const cxxopts::exceptions::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
         std::cout << options.help() << std::endl;
@@ -77,16 +88,16 @@ void parse(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
     parse(argc, argv);
     try {
-        if(fs::exists(output)) {
+        if(fs::exists(output_dir)) {
             if(is_force) {
-                fs::remove_all(output);
+                fs::remove_all(output_dir);
             } else {
-                std::cout << "Error: output directory (" << output << ") exists!" << std::endl;
+                std::cout << "Error: output directory (" << output_dir << ") exists!" << std::endl;
                 exit(1);
             }
         }
-        if(!fs::create_directories(output)) {
-            std::cout << "Error: failed to create output directory (" << output << ")!" << std::endl;
+        if(!fs::create_directories(output_dir)) {
+            std::cout << "Error: failed to create output directory (" << output_dir << ")!" << std::endl;
             exit(1);
         }
         const char *dump;
@@ -101,7 +112,7 @@ int main(int argc, char* argv[]) {
         RankMetaCollection& metas = reader.get_all_meta_maps();
         
 
-        auto analyzer = MemoryAnalyzer(traces, &backtraces, metas);
+        auto analyzer = MemoryAnalyzer(traces, &backtraces, metas, output_dir, pretty_print);
 	    // analyzer.dump_report(output.c_str());
     } 
     catch (fs::filesystem_error const & e) {

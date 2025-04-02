@@ -182,7 +182,7 @@ private:
         auto [_ptr, id] = allocateRaw();
         T *ptr = (T *)_ptr;
         ptr->init();
-        spdlog::debug("allocate block type {} at {}", utils::namesv<(Block::BLOCK_TYPE_ENUM)T::BLOCK_TYPE_ID>, id);
+        // spdlog::debug("allocate block type {} at {}", utils::namesv<(Block::BLOCK_TYPE_ENUM)T::BLOCK_TYPE_ID>, id);
         assert(id > 1);
         return {ptr, id};
     }
@@ -199,13 +199,13 @@ private:
     std::pair<void *, Block::block_id_t> allocateDataBlock()
     {
         auto [_ptr, id] = allocateRaw();
-        spdlog::debug("allocate {} data block at {}", 1, id);
+        // spdlog::debug("allocate {} data block at {}", 1, id);
         return {_ptr, id};
     }
     std::tuple<void *, Block::block_id_t, size_t> allocateDataBlock(size_t num)
     {
         auto [_ptr, id, continuousNum] = allocateRaw(num);
-        spdlog::debug("allocate {} data block at {} with {} continuous block", num, id, continuousNum);
+        // spdlog::debug("allocate {} data block at {} with {} continuous block", num, id, continuousNum);
         return {_ptr, id, continuousNum};
     }
 
@@ -339,7 +339,7 @@ public:
         auto entry = get();
         if (entry && entry->desc)
         {
-            // spdlog::info("entry desc: {}; blockId: {}", entry->desc, entry->blockId);
+            // // spdlog::info("entry desc: {}; blockId: {}", entry->desc, entry->blockId);
             return static_cast<Block *>(manager->driver.loadBlock(entry->blockId));
         }
         return nullptr;

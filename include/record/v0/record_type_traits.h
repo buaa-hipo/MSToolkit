@@ -78,6 +78,21 @@ struct MacroToTypeHelper
 			return record_memory_free{};
 		}
         
+        else if constexpr (MsgType == event_Memory_Memalign)
+        {
+            return record_memory_memalign{};
+        }
+
+    else if constexpr (MsgType == event_Memory_Aligned_Alloc)
+        {
+            return record_memory_aligned_alloc{};
+        }
+
+    else if constexpr (MsgType == event_Memory_Posix_Memalign)
+        {
+            return record_memory_posix_memalign{};
+        }
+
         else
         {
             return record_t{};

@@ -23,7 +23,7 @@ enum PrimitiveType
 template <typename T>
 consteval int primitiveTypeEncode()
 {
-    if constexpr (std::is_integral_v<T>)
+    if constexpr (std::is_integral_v<T> || std::is_enum_v<T>)
     {
         if constexpr (sizeof(T) == 1)
         {

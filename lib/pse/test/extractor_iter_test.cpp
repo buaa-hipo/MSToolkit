@@ -45,10 +45,10 @@ void read_test()
     auto iter2 = data2.any_begin();
     const auto &r1 = iter.get<R1>();
     const auto &r2 = iter2.get<R2>();
-    spdlog::info("r1.a={}, r1.b={}, r1.time={}", r1.a, r1.b, r1.time);
-    spdlog::info("r2.c={}, r2.time={}", r2.c, r2.time);
-    spdlog::info("1.time: {}", iter.time());
-    spdlog::info("2.time: {}", iter2.time());
+    // spdlog::info("r1.a={}, r1.b={}, r1.time={}", r1.a, r1.b, r1.time);
+    // spdlog::info("r2.c={}, r2.time={}", r2.c, r2.time);
+    // spdlog::info("1.time: {}", iter.time());
+    // spdlog::info("2.time: {}", iter2.time());
     std::vector<std::pair<SectionIterator, SectionIterator>> iters;
     iters.emplace_back(data.any_range());
     iters.emplace_back(data2.any_range());
@@ -79,5 +79,5 @@ int main()
     std::filesystem::remove("test.db.lock");
     write_test();
     read_test();
-    spdlog::info("pass");
+    // spdlog::info("pass");
 }

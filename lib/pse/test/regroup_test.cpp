@@ -97,7 +97,7 @@ void regroup_test()
         assert(r3.r2.pmus[1] == i + 3);
         assert(r1.a == i + 2 * N);
         assert(r1.b == i + 1 + 2 * N);
-        spdlog::info("r: {}", r3.r1.a);
+        // spdlog::info("r: {}", r3.r1.a);
         ++i;
     }
 
@@ -112,20 +112,20 @@ void regroup_test()
     //     assert(r.r1.b == i + 1 + N);
     //     assert(r.r2.pmus[0] == i + 2);
     //     assert(r.r2.pmus[1] == i + 3);
-    //     spdlog::info("r: {}", r.r1.a);
+    //     // spdlog::info("r: {}", r.r1.a);
     //     ++i;
     // }
 
-    spdlog::info("----------------");
+    // spdlog::info("----------------");
     auto view_multi_pass = view2 | std::views::take(3);
     for (const auto &r : view_multi_pass | std::views::take(2))
     {
-        spdlog::info("r: {}", r.a);
+        // spdlog::info("r: {}", r.a);
     }
-    spdlog::info("----------------");
+    // spdlog::info("----------------");
     for (const auto &r : view_multi_pass)
     {
-        spdlog::info("r: {}", r.a);
+        // spdlog::info("r: {}", r.a);
     }
 
     // We can find that view2 is not at the beginning of the range.
@@ -133,7 +133,7 @@ void regroup_test()
     // So it is recommended to not reuse the view after it is being traversed.
     // auto view4 = pse::dsr::make_regroup<R3>(view2, view, [](const R1 &r1) { return r1; }, [](const R1 &r2) { return (*(R2 *)&r2); });
     // for (const auto& r3 : view4) {
-    //     spdlog::info("r3.r1.a: {} r3.r2.pmus: {}", r3.r1.a, r3.r2.pmus[0]);
+    //     // spdlog::info("r3.r1.a: {} r3.r2.pmus: {}", r3.r1.a, r3.r2.pmus[0]);
     //     assert(r3.r1.a == i + N);
     //     assert(r3.r1.b == i + 1 + N);
     //     assert(r3.r2.pmus[0] == i + 2);

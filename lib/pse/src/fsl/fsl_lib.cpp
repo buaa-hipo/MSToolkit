@@ -40,7 +40,7 @@ void FileSectionLayerDriver::preserve(size_t len)
         auto res = ftruncate(fd, len);
         if (res < 0)
         {
-            spdlog::error("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno));
+            // spdlog::error("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno));
             throw std::runtime_error(
                 fmt::format("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno)));
         }
@@ -63,7 +63,7 @@ void *FileSectionLayerDriver::load(size_t offset)
     {
         return tryRes;
     }
-    // spdlog::info("load page offset: {}", pageOffset);
+    // // spdlog::info("load page offset: {}", pageOffset);
     auto nextPreservedLength = std::max(pageOffset + PAGE_SIZE, 2 * mapedEnd);
     if (nextPreservedLength > fileSize())
     {
@@ -89,22 +89,22 @@ void *FileSectionLayerDriver::load(size_t offset)
         }
     }();
     // assert(page == mmap_ptr + mapedEnd);
-    spdlog::info("mmap {:x} with length {:x} to {:x}, total length {:x}",
+    /* spdlog::info("mmap {:x} with length {:x} to {:x}, total length {:x}",
                  (size_t)(mmap_ptr + mapedEnd),
                  nextPreservedLength - mapedEnd,
                  (size_t)(mmap_ptr + nextPreservedLength),
-                 nextPreservedLength);
-    // spdlog::info("map page: {} for offset {:X}", page, pageOffset);
+                 nextPreservedLength);*/
+    // // spdlog::info("map page: {} for offset {:X}", page, pageOffset);
     // checke pageoffset is PAGE_SIZE align
     if (pageOffset % PAGE_SIZE != 0)
     {
-        spdlog::error("page offset {} is not PAGE_SIZE align", pageOffset);
+        // spdlog::error("page offset {} is not PAGE_SIZE align", pageOffset);
         throw std::runtime_error("page offset is not PAGE_SIZE align");
     }
     // auto page = (void *)new char[PAGE_SIZE];
     if (newLoadedPage == MAP_FAILED)
     {
-        spdlog::error("failed to mmap offset {} for fd {}: {}", offset, fd, strerror(errno));
+        // spdlog::error("failed to mmap offset {} for fd {}: {}", offset, fd, strerror(errno));
         throw std::runtime_error("mmap failed");
     }
     // this->id2ptr.insert({pageOffset, page});
@@ -124,7 +124,7 @@ void FileSectionLayerDriver::unload(void *ptr)
     auto err = munmap(ptr, PAGE_SIZE);
     if (err != 0)
     {
-        spdlog::error("failed to mnumap ptr {} for fd {}: {}", ptr, fd, strerror(errno));
+        // spdlog::error("failed to mnumap ptr {} for fd {}: {}", ptr, fd, strerror(errno));
         throw std::runtime_error("failed to munmap");
     }
 }
@@ -151,18 +151,18 @@ void *FileSectionLayerDriver::loadBlock(size_t blockId)
     // {
     //     driver_atomic_lock->lock();
     // }
-    // spdlog::debug("load blockId {}", blockId);
+    // // spdlog::debug("load blockId {}", blockId);
     auto pagePtr = (char *)load(blockId * BLOCK_SIZE);
     // if (driver_atomic_lock)
     // {
     //     driver_atomic_lock->unlock();
     // }
-    // spdlog::debug("load blockId {} at {:x} with offset {:x}",
+    // // spdlog::debug("load blockId {} at {:x} with offset {:x}",
     //               blockId,
     //               (size_t)pagePtr + (blockId % BLOCKS_PER_PAGE) * BLOCK_SIZE,
     //               blockId % BLOCKS_PER_PAGE * BLOCK_SIZE + (pagePtr - mmap_ptr));
-    // spdlog::debug("page offet: {:x}", pagePtr - mmap_ptr);
-    // spdlog::debug("page align: {:x}", pageAlign(blockId * BLOCK_SIZE));
+    // // spdlog::debug("page offet: {:x}", pagePtr - mmap_ptr);
+    // // spdlog::debug("page align: {:x}", pageAlign(blockId * BLOCK_SIZE));
     // printf("load pageptr: %p\n", pagePtr);
     return pagePtr + (blockId % BLOCKS_PER_PAGE) * BLOCK_SIZE;
 }
@@ -204,7 +204,7 @@ FileSectionLayerDriver::FileSectionLayerDriver(std::string_view filename)
     }
     if (fd < 0)
     {
-        spdlog::error("failed to open file {}: {}", filename, strerror(errno));
+        // spdlog::error("failed to open file {}: {}", filename, strerror(errno));
         throw std::runtime_error("failed to open file");
     }
 
@@ -213,7 +213,7 @@ FileSectionLayerDriver::FileSectionLayerDriver(std::string_view filename)
     mprotect(mmap_ptr, DEFAULT_INIT_MMAP_SIZE, PROT_NONE);
     if (mmap_ptr == MAP_FAILED)
     {
-        spdlog::error("failed to init mmap: {}", strerror(errno));
+        // spdlog::error("failed to init mmap: {}", strerror(errno));
         throw std::runtime_error("mmap failed");
     }
 }
@@ -232,9 +232,9 @@ FileSectionLayerDriver::~FileSectionLayerDriver()
     auto res = munmap(mmap_ptr, DEFAULT_INIT_MMAP_SIZE);
     if (res != 0)
     {
-        spdlog::error("failed to munmap mmap_ptr: {}", strerror(errno));
+        // spdlog::error("failed to munmap mmap_ptr: {}", strerror(errno));
     }
-    spdlog::info("driver exit");
+    // spdlog::info("driver exit");
 }
 
 BlockManager::BlockManager(std::string_view name, ral::RWMode mode)
@@ -255,12 +255,12 @@ BlockManager::BlockManager(std::string_view name, ral::RWMode mode)
             driver.blockAllocated = new std::atomic_ref(super->blockAllocated);
             driver.blockAllocated->store(2);
             driver.driver_atomic_lock = new utils::SpinLock(super->atomic_lock);
-            spdlog::debug("open lock file");
-            spdlog::debug("access to lock file: {}", access(lock_name.c_str(), F_OK));
+            // spdlog::debug("open lock file");
+            // spdlog::debug("access to lock file: {}", access(lock_name.c_str(), F_OK));
             auto res = open(lock_name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0777);
             if (res < 0)
             {
-                spdlog::error("failed to create lock file {}: {}", lock_name, strerror(errno));
+                // spdlog::error("failed to create lock file {}: {}", lock_name, strerror(errno));
                 throw std::runtime_error("failed to create lock file");
             }
         }
@@ -268,10 +268,10 @@ BlockManager::BlockManager(std::string_view name, ral::RWMode mode)
         {
             while (access(lock_name.c_str(), F_OK) != 0)
             {
-                spdlog::info("wait for lock file {}", lock_name);
+                // spdlog::info("wait for lock file {}", lock_name);
                 sleep(1);
             }
-            spdlog::debug("detect lock file");
+            // spdlog::debug("detect lock file");
             super = reinterpret_cast<SuperBlock *>(driver.loadBlock(0));
             root = reinterpret_cast<DirSectionDescBlock *>(driver.loadBlock(1));
             driver.blockAllocated = new std::atomic_ref(super->blockAllocated);
@@ -317,7 +317,7 @@ void *BlockManager::openSection(
             blk->self_desc = desc;
             entry->blockId = blkId;
             entry->desc = desc;
-            spdlog::debug("create dir section {} at block {}: {:x}", desc, blkId, (size_t)blk);
+            // spdlog::debug("create dir section {} at block {}: {:x}", desc, blkId, (size_t)blk);
             assert(blk != nullptr);
             return blk;
         }
@@ -328,7 +328,7 @@ void *BlockManager::openSection(
             blk->self_desc = desc;
             entry->blockId = blkId;
             entry->desc = desc;
-            spdlog::debug("create data section {} at block {}: {:x}", desc, blkId, (size_t)blk);
+            // spdlog::debug("create data section {} at block {}: {:x}", desc, blkId, (size_t)blk);
             assert(blk != nullptr);
             return blk;
         }
@@ -341,11 +341,11 @@ void *BlockManager::openSection(
     {
         assert(driver.blockExists(entry->blockId));
         auto blk = driver.loadBlock(entry->blockId);
-        spdlog::debug("open section {} at block {}: {:x} with type {}",
+        /* spdlog::debug("open section {} at block {}: {:x} with type {}",
                       desc,
                       entry->blockId,
                       (size_t)blk,
-                      ((DataSectionDescBlock *)blk)->blockTypeId);
+                      ((DataSectionDescBlock *)blk)->blockTypeId);*/
         assert((Block::isa<DataSectionDescBlock, DirSectionDescBlock>(blk)));
         assert(blk != nullptr);
         return blk;
@@ -371,18 +371,25 @@ DataSectionDescBlock *BlockManager::openDataSection(
 
 void BlockManager::writeDataSection(DataSectionDescBlock *sec, size_t offset, const void *buf, size_t len)
 {
-    spdlog::debug("block addr: {:x}", (size_t)sec);
+    // spdlog::debug("block addr: {:x}", (size_t)sec);
     {
-        utils::SpinLock lock(sec->atomic_lock);
-        std::lock_guard guard(lock);
+        // utils::SpinLock lock(sec->atomic_lock);
+        // std::lock_guard guard(lock);
         if (offset == -1ul)
         {
-            offset = sec->sectionSize;
-            sec->sectionSize += len;
+            
+            std::atomic_ref ref(sec->sectionSize);
+            offset = ref.fetch_add(len);
+            //offset = sec->sectionSize;
+            //sec->sectionSize += len;
         }
         else
         {
-            sec->sectionSize = std::max(sec->sectionSize, offset + len);
+            // sec->sectionSize = std::max(sec->sectionSize, offset + len);
+            std::atomic_ref ref(sec->sectionSize);
+            auto v = offset + len;
+            auto t = ref.load();
+            while (v > t && !ref.compare_exchange_weak(v, t)) {}
         }
     }
     if (len == 0)
@@ -486,7 +493,7 @@ DirSectionDescBlock::Entry *BlockManager::findEntry(DirSectionDescBlock *sec, Bl
             return nullptr;
         }
     }
-    spdlog::debug("direct entry is full");
+    // spdlog::debug("direct entry is full");
     // TODO: Add indirect block support.
 
     if (sec->indirects[0])
@@ -506,7 +513,7 @@ DirSectionDescBlock::Entry *BlockManager::findEntry(DirSectionDescBlock *sec, Bl
             return findEntry(ptr, desc, create);
         }
     }
-    spdlog::debug("level 1 is full");
+    // spdlog::debug("level 1 is full");
 
     for (size_t i = 2; i < DirSectionDescBlock::LEVELS_ENTRY_SUM.size(); ++i)
     {
@@ -630,7 +637,7 @@ Block::block_id_t *BlockManager::getDataBlockId(NoDescIndirectBlock *sec, size_t
     {
         auto topEntryId = entry_id / detail::power(NoDescIndirectBlock::ENTRY_NUM, level - 1);
         auto subEntryId = entry_id % detail::power(NoDescIndirectBlock::ENTRY_NUM, level - 1);
-        spdlog::debug("top entry id: {}; sub entry id: {}", topEntryId, subEntryId);
+        // spdlog::debug("top entry id: {}; sub entry id: {}", topEntryId, subEntryId);
         if (!sec->blockIds[topEntryId])
         {
             auto [ptr, id] = allocate<NoDescIndirectBlock>();
@@ -655,7 +662,7 @@ Block::block_id_t *BlockManager::getDataBlockId(DataSectionDescBlock *sec, size_
     {
         if (entry_id < num)
         {
-            spdlog::debug("create data block entry at level {} for {}", i, entry_id);
+            // spdlog::debug("create data block entry at level {} for {}", i, entry_id);
             if (!sec->indirects[i - 1])
             {
                 auto [ptr, id] = allocate<NoDescIndirectBlock>();
@@ -679,7 +686,7 @@ Block::block_id_t *BlockManager::getDataBlockId(DataSectionDescBlock *sec, size_
 }
 char *BlockManager::loadDataBlock(DataSectionDescBlock *sec, size_t offset)
 {
-    // spdlog::debug("load data block for offset {}", offset);
+    // // spdlog::debug("load data block for offset {}", offset);
 
     auto entry = getDataBlockId(sec, offset);
     if (*entry == 0)

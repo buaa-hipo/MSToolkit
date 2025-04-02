@@ -13,7 +13,7 @@ int main()
 {
     std::filesystem::remove("a.txt");
     std::filesystem::remove("a.txt.lock");
-    spdlog::set_level(spdlog::level::debug);
+    // spdlog::set_level(// spdlog::level::debug);
     {
         for (int i = 0; i < DATA_LEN; ++i)
         {
@@ -27,7 +27,7 @@ int main()
         manager.writeDataSection(dataSection2, 123, buf1, DATA_LEN);
         manager.writeDataSection(dataSection2, 143, buf1, DATA_LEN);
     }
-    spdlog::info("write finish");
+    // spdlog::info("write finish");
     {
         // fsl::FileSectionLayerDriver driver("a.txt");
         fsl::BlockManager manager("a.txt", ral::READ);
@@ -41,5 +41,5 @@ int main()
     std::filesystem::remove("a.txt");
     std::filesystem::remove("a.txt.lock");
     assert(strncmp(buf1, buf2, 11) == 0);
-    spdlog::info("test passed");
+    // spdlog::info("test passed");
 }

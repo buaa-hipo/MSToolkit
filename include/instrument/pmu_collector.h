@@ -5,6 +5,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <regex>
+
 
 using pmu_val_type = long long;
 
@@ -22,6 +24,23 @@ static inline void parse_pmu_event_list(const char *event_name_list_str, std::ve
         event_name = strtok(nullptr, ",");
     }
     free(buf);
+}
+
+static inline void parse_dev_pmu_events_list(const char *events_str, std::vector<std::string> *event_list) {
+    if (events_str == nullptr) {
+        return;
+    }
+    std::string events = events_str;
+    std::regex pattern("hthread:::([^,]*)");
+    std::smatch match;
+
+    auto start = events.cbegin();
+    while (std::regex_search(start, events.cend(), match, pattern)) {
+        if (match.size() > 1) {
+            event_list->emplace_back(match.str(1));
+        }
+        start = match.suffix().first;
+    }
 }
 
 #endif

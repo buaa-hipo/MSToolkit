@@ -13,7 +13,7 @@ SQLiteHandle::SQLiteHandle(const std::string &dbName)
     auto res = sqlite3_open(dbName.c_str(), &pdb);
     if (res != SQLITE_OK)
     {
-        spdlog::error("failed to open db {} with error code {}", dbName, res);
+        // spdlog::error("failed to open db {} with error code {}", dbName, res);
         throw std::runtime_error("failed to open db");
     }
 }

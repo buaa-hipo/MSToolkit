@@ -86,12 +86,12 @@ jsi::toolkit::backtrace_node_t create_backtrace_node(void *ip, backtrace_context
 
     Dl_info info;
     if (dladdr(ip, &info) == 0) {
-        JSI_ERROR("Invalid instruction pointer address in backtrace info\n");
+        JSI_WARN("Invalid instruction pointer address in backtrace info\n");
+        bt_node.bin_filename = nullptr;
+        bt_node.bin_symbol_name = nullptr;
+        bt_node.bin_base_addr = nullptr;
+        return bt_node;
     }
-
-    // bt_node.bin_filename = info.dli_fname;
-    // bt_node.bin_base_addr = info.dli_fbase;
-    // bt_node.bin_symbol_name = info.dli_sname;
     if(info.dli_fname) {
         size_t fname_len = strlen(info.dli_fname);
         // printf("fname size = %d\n", fname_len); fflush(stdout);
@@ -111,11 +111,12 @@ jsi::toolkit::backtrace_node_t create_backtrace_node(void *ip, backtrace_context
     } else {
         bt_node.bin_symbol_name = nullptr;
     }
-
     return bt_node;
 }
 
-jsi::toolkit::BacktraceTree *bt_tree = nullptr;
+// lazy thread initialization at record_writer
+thread_local jsi::toolkit::BacktraceTree *bt_tree = nullptr;
+thread_local int ref_count = 0;
 
 }// namespace
 
@@ -201,6 +202,7 @@ backtrace_context_t BacktraceTree::backtrace_context_get(int omit_level) {
         auto bt_node = create_backtrace_node(ip, ctx);
         _bt_nodes.push_back(bt_node);
         auto child_ctx = (int32_t) _bt_nodes.size() - 1;
+        DASSERT_MSG(ctx < child_ctx, "BacktraceTree::backtrace_context_get");
         _bt_nodes[ctx].children_contexts[ip] = child_ctx;
         ctx = child_ctx;
     }
@@ -213,13 +215,11 @@ void BacktraceTree::backtrace_db_dump(std::unique_ptr<pse::ral::DirSectionInterf
     //     JSI_WARN("Trying to dump backtrace db in loading mode, ignoring...\n");
     //     return;
     // }
-
     uint64_t len = _bt_nodes.size() - 1;// Fixed 64-bit
     // Open a data section for node data
     auto node_data_sec = dir->openDataSection<backtrace_node_record_t>(StaticSectionDesc::BACKTRACE_NODE_SEC, true, 0, 0);
     // Open a string section for string data
     auto string_sec = dir->openStringSection(StaticSectionDesc::BACKTRACE_STRING_SEC, true);
-    
     for (backtrace_context_t i = 1; i <= len; i++) {
         auto &node = _bt_nodes[i];
 
@@ -230,6 +230,7 @@ void BacktraceTree::backtrace_db_dump(std::unique_ptr<pse::ral::DirSectionInterf
 
         auto fname = node.bin_filename;
         if (fname != nullptr) {
+            // printf("fname: %s\n", fname);
             auto offset = string_sec->write(fname);
             record.fname_offset = offset;
         } else {
@@ -238,6 +239,7 @@ void BacktraceTree::backtrace_db_dump(std::unique_ptr<pse::ral::DirSectionInterf
 
         auto sname = node.bin_symbol_name;
         if (sname != nullptr) {
+            // printf("sname: %s\n", sname);
             auto offset = string_sec->write(sname);
             record.sname_offset = offset;
         } else {
@@ -246,6 +248,7 @@ void BacktraceTree::backtrace_db_dump(std::unique_ptr<pse::ral::DirSectionInterf
 
         auto sfilename = node.src_filename;
         if (sfilename != nullptr) {
+            // printf("sfilename: %s\n", sfilename);
             auto offset = string_sec->write(sfilename);
             record.sfilename_offset = offset;
         } else {
@@ -254,14 +257,14 @@ void BacktraceTree::backtrace_db_dump(std::unique_ptr<pse::ral::DirSectionInterf
 
         auto sfuncname = node.src_funcname;
         if (sfuncname != nullptr) {
+            // printf("sfuncname: %s\n", sfuncname);
             auto offset = string_sec->write(sfuncname);
             record.sfuncname_offset = offset;
         } else {
             record.sfuncname_offset = -1;
         }
-
+        // printf("\n");
         record.lineno = node.lineno;
-
         node_data_sec->write(&record);
     }
 }
@@ -720,10 +723,16 @@ void *BacktraceTree::backtrace_context_ip(backtrace_context_t ctx) const {
     return _bt_nodes[ctx].ip;
 }
 
+void BacktraceTree::backtrace_set_max_size(int max_bt_size) {
+    _max_bt_size = max_bt_size;
+}
+
 }}// namespace jsi::toolkit
 
 void backtrace_init_recording(int max_bt_size) {
+    ref_count++;
     if (bt_tree != nullptr) {
+        bt_tree->backtrace_set_max_size(max_bt_size);
         JSI_WARN("Backtrace is already initialized. This initialization will be ignored.");
         return;
     }
@@ -731,50 +740,57 @@ void backtrace_init_recording(int max_bt_size) {
 }
 
 void backtrace_finalize() {
-    if (bt_tree != nullptr) {
+    ref_count--;
+    if (ref_count<=0 && bt_tree != nullptr) {
         delete bt_tree;
         bt_tree = nullptr;
+        ref_count = 0;
     }
 }
 
 backtrace_context_t backtrace_context_get(int omit_level) {
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        throw std::invalid_argument("backtrace_context_get: bt_tree not initialized\n");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.", __func__);
     }
     return bt_tree->backtrace_context_get(omit_level);
 }
 
 void backtrace_db_dump(FILE *file) {
+    if (ref_count>1) {
+        JSI_WARN("Ignore as it is not the final backtrace version.\n");
+        return;
+    }
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.\n");
     }
     bt_tree->backtrace_db_dump(file);
 }
 
 void backtrace_db_dump(std::unique_ptr<pse::ral::DirSectionInterface> &dir) {
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.", __func__);
     }
     bt_tree->backtrace_db_dump(dir);
 }
 
 backtrace_context_t backtrace_context_get_parent(backtrace_context_t bt_ctxt) {
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.", __func__);
     }
     return bt_tree->get_parent(bt_ctxt);
 }
 
 void backtrace_context_print(backtrace_context_t bt_ctxt, int size) {
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.", __func__);
     }
     puts(backtrace_context_string(bt_ctxt, size));
 }
 
 const char *backtrace_context_string(backtrace_context_t bt_ctxt, int size) {
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.", __func__);
     }
     return bt_tree->backtrace_get_context_string(bt_ctxt, size);
 }
@@ -793,7 +809,7 @@ bool backtrace_is_same_parent(backtrace_context_t c1, backtrace_context_t c2) {
 
 void *backtrace_context_get_ip(backtrace_context_t bt_ctxt) {
     if (bt_tree == nullptr) {
-        JSI_ERROR("Backtrace must be initialized by calling backtrace_init first.");
+        JSI_ERROR("[%s] Backtrace must be initialized by calling backtrace_init first.", __func__);
     }
     return bt_tree->backtrace_context_ip(bt_ctxt);
 }

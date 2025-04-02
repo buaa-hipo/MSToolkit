@@ -8,3 +8,4 @@ include/record/wrap_defines.h
 .clang-format
 *.log
 *.err
+.DS_Store

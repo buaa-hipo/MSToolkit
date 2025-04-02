@@ -1,0 +1,80 @@
+##EXT Trace of MATRIX Device - Thread 1
+Event Name: ACCL_API_scalar_malloc
+Start Time: 22627830
+End Time: 26411078
+Duration: 3783248
+Record Size: 56
+Correlation ID:5
+Cluster ID of the allocated memory:0
+Bytes of memory allocated:16384
+Memory kind (hardware location):4
+CYCLE : (14431659, 14953803, 522144)
+BRTK : (156022, 215461, 59439)
+Event Name: ACCL_API_scalar_malloc
+Start Time: 30647318
+End Time: 34218063
+Duration: 3570745
+Record Size: 56
+Correlation ID:6
+Cluster ID of the allocated memory:0
+Bytes of memory allocated:16384
+Memory kind (hardware location):4
+CYCLE : (21874264, 25613283, 3739019)
+BRTK : (337873, 398485, 60612)
+Event Name: ACCL_API_scalar_load
+Start Time: 38489741
+End Time: 42041290
+Duration: 3551549
+Record Size: 72
+Correlation ID:7
+Bytes of data to be copied:4096
+Direction of memcpy:1
+CYCLE : (29322319, 33111310, 3788991)
+BRTK : (455287, 515503, 60216)
+Event Name: ACCL_API_scalar_load
+Start Time: 46292162
+End Time: 49860704
+Duration: 3568542
+Record Size: 72
+Correlation ID:8
+Bytes of data to be copied:4096
+Direction of memcpy:1
+CYCLE : (36649752, 40192792, 3543040)
+BRTK : (571579, 626851, 55272)
+Event Name: ACCL_USER_FUNC
+Start Time: 53895620
+End Time: 57446432
+Duration: 3550812
+Record Size: 40
+Correlation ID:9
+CYCLE : (43840126, 47311262, 3471136)
+BRTK : (683440, 734425, 50985)
+Event Name: ACCL_API_scalar_store
+Start Time: 61153800
+End Time: 64729374
+Duration: 3575574
+Record Size: 72
+Correlation ID:10
+Bytes of data to be copied:4096
+Direction of memcpy:3
+CYCLE : (50886572, 54537172, 3650600)
+BRTK : (789650, 846632, 56982)
+Event Name: ACCL_USER_FUNC
+Start Time: 18810774
+End Time: 68498622
+Duration: 49687848
+Record Size: 40
+Correlation ID:4
+CYCLE : (7174891, 58610415, 51435524)
+BRTK : (100927, 917554, 816627)
+Event Name: ACCL_ACTIVITY_kernel
+Start Time: 15315447
+End Time: 72825483
+Duration: 57510036
+Record Size: 48
+Correlation ID:3
+API or Operation domain:1
+API kind or Kernel index (offset):0
+Workload kind:0
+CYCLE : (3691568, 61591274, 57899706)
+BRTK : (50983, 913886, 862903)

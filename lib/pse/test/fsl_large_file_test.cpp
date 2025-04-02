@@ -19,7 +19,7 @@ void write_test(char *data, size_t len)
         bm.writeDataSection(dataSec, i * BLK_LEN, data + i * BLK_LEN, BLK_LEN);
     }
     gettimeofday(&ed, nullptr);
-    spdlog::info("section write speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
+    // spdlog::info("section write speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
 }
 
 void read_test(char *data, size_t len)
@@ -33,14 +33,14 @@ void read_test(char *data, size_t len)
         bm.readDataSection(dataSec, i * BLK_LEN, data + i * BLK_LEN, BLK_LEN);
     }
     gettimeofday(&ed, nullptr);
-    spdlog::info("section read speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
+    // spdlog::info("section read speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
 }
 
 int main()
 {
     std::filesystem::remove("a.out");
     std::filesystem::remove("a.out.lock");
-    spdlog::set_level(spdlog::level::info);
+    // spdlog::set_level(// spdlog::level::info);
     FILE *f = fopen("data.bin", "rb");
     fseek(f, 0, SEEK_END);
     auto len = ftell(f);
@@ -53,7 +53,7 @@ int main()
         fread(data + i * BLK_LEN, 1, BLK_LEN, f);
     }
     gettimeofday(&ed, nullptr);
-    spdlog::info("raw read speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
+    // spdlog::info("raw read speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
 
     fclose(f);
 
@@ -71,17 +71,17 @@ int main()
     }
     gettimeofday(&ed, nullptr);
     fclose(f2);
-    spdlog::info("raw write speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
+    // spdlog::info("raw write speed: {:.4f}MB/s", (len / 1024.0 / 1024) / time_diff(st, ed));
 
     for (size_t i = 0; i < len - len % BLK_LEN; ++i)
     {
         if (data[i] != data2[i])
         {
-            spdlog::error("read value does not equal to write value at {}", i);
+            // spdlog::error("read value does not equal to write value at {}", i);
             exit(0);
         }
     }
-    spdlog::info("pass");
+    // spdlog::info("pass");
     delete[] data;
     delete[] data2;
 }

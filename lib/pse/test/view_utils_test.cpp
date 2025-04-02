@@ -79,7 +79,7 @@ void write_test()
 //         {
 //             assert(r1.r1.a == i);
 //         }
-//         // spdlog::info("r1: {}, r2: {}", r1.r1.a, r2 ? (*r2).b : -1);
+//         // // spdlog::info("r1: {}, r2: {}", r1.r1.a, r2 ? (*r2).b : -1);
 //         i++;
 //     }
 
@@ -90,7 +90,7 @@ void write_test()
 //     {
 //         assert(r1.r1.a == i);
 //         assert(r2.b == i);
-//         // spdlog::info("r1: {}, r2: {}", r1.r1.a, r2.b);
+//         // // spdlog::info("r1: {}, r2: {}", r1.r1.a, r2.b);
 //         i++;
 //     }
 
@@ -108,7 +108,7 @@ void write_test()
 //         {
 //             assert(r2.b == i);
 //         }
-//         // spdlog::info("r1: {}, r2: {}", r1 ? (*r1).r1.a : -1, r2.b);
+//         // // spdlog::info("r1: {}, r2: {}", r1 ? (*r1).r1.a : -1, r2.b);
 //         i++;
 //     }
 
@@ -131,7 +131,7 @@ void write_test()
 //         // {
 //         //     assert((*r2).b == i);
 //         // }
-//         spdlog::info("r1: {}, r2: {}", r1 ? (*r1).r1.a : -1, r2 ? (*r2).b : -1);
+//         // spdlog::info("r1: {}, r2: {}", r1 ? (*r1).r1.a : -1, r2 ? (*r2).b : -1);
 //         i++;
 //     }
 // }
@@ -162,7 +162,7 @@ void sort_filter_test()
 //     auto gg = pse::dsr::group_aggregate(
 //         view1,
 //         [](int x1, int x2) {
-//             spdlog::info("x1:{}, x2:{}", x1, x2);
+//             // spdlog::info("x1:{}, x2:{}", x1, x2);
 //             return (x1 % 10 >= 0 && x2 % 10 > 0);
 //         },
 //         [](int acc, int x) {

@@ -21,6 +21,8 @@
 #include <mpi.h>
 #include <set>
 
+#define BROKEN_TRACE_ID -1
+
 namespace fs = std::filesystem;
 
 RecordTraceExt* loadRecordTraceExt(const char* filename) {
@@ -162,6 +164,12 @@ RecordReader::~RecordReader() {
     for (auto it = _record_collection.begin(); it != _record_collection.end(); ++it) {
         delete it->second;
     }
+    for (auto it = _sampling_record_collection.begin(); it != _sampling_record_collection.end(); ++it) {
+        delete it->second;
+    }
+    for (auto it = _ext_record_collection.begin(); it != _ext_record_collection.end(); ++it) {
+        delete it->second;
+    }
     _record_collection.clear();
     for (auto it = _meta_collection.begin(); it != _meta_collection.end(); ++it) {
         delete it->second;
@@ -219,19 +227,27 @@ void RecordReader::load_meta(std::unique_ptr<pse::ral::DirSectionInterface>& dir
     RecordMeta *meta = new RecordMeta(dir);
     auto &metaMap = meta->getMetaMap();
     MetaDataMap::MetaValue_t *value_ranks;
+
+    if (metaMap.count("FINALIZED") == 0) {
+        JSI_WARN("Ignore as the trace is broken: %s\n", node_id + std::to_string(dir->self_desc()));
+        _id2rank[node_id + std::to_string(dir->self_desc())] = BROKEN_TRACE_ID;
+        delete meta;
+        return;
+    }
+
     if(metaMap.count("MPI_COMM_WORLD") != 0) {
         metaMap.at("MPI_COMM_WORLD")->get("rank", &value_ranks);
     }
     else if(metaMap.count("HOST INFO") != 0) {
         if(_mpi_only) {
-            JSI_WARN("Ignore as the trace is not a MPI trace: %s", node_id + std::to_string(dir->self_desc()));
-            _id2rank[node_id + std::to_string(dir->self_desc())] = -1;
+            JSI_WARN("Ignore as the trace is not a MPI trace: %s\n", node_id + std::to_string(dir->self_desc()));
+            _id2rank[node_id + std::to_string(dir->self_desc())] = BROKEN_TRACE_ID;
             delete meta;
             return ;
         }
         // if no rank info, encode from PID
         metaMap.at("HOST INFO")->get("PID", &value_ranks);
-        value_ranks->i32 = -value_ranks->i32;
+        value_ranks->i32 = -value_ranks->i32-1;
     }
     else {
         JSI_ERROR("Broken trace data: missed metaSection info for identifier not yet.\n");
@@ -280,12 +296,25 @@ void RecordReader::load_trace(const char* path) {
     }
 }
 
-void RecordReader::load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, const std::string& node_id) {
-    auto rank = _id2rank.at(node_id + std::to_string(dir->self_desc()));
+void RecordReader::load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, const std::string& node_id, uint64_t pid) {
+    auto rank = _id2rank.at(node_id + std::to_string(pid));
     auto generic_dir = dir->openDirSection(StaticSectionDesc::GENERIC_TRACE_SEC_ID, false);
-    if (!_mpi_only || rank>=0) {
-        _record_collection[rank] = new RecordTrace(std::move(generic_dir), rank, true,
+    auto sampling_dir = dir->openDirSection(StaticSectionDesc::SAMPLING_TRACE_SEC_ID, false);
+    auto ext_dir = dir->openDirSection(StaticSectionDesc::EXT_TRACE_SEC_ID, false);
+    auto thread_id = node_id + std::to_string(dir->self_desc());
+    JSI_LOG(JSILOG_INFO, "tid : %d\n", dir->self_desc());
+    
+    if (!_mpi_only && rank >= 0) {
+        // auto string_section = dir->openStringSection(StaticSectionDesc::COMMON_USE_STRING_SEC, false);
+        // _string_section_collection[rank] = string_section.release();
+    }
+    
+    if (rank!=BROKEN_TRACE_ID || (_mpi_only && rank>=0)) {
+        _record_collection[thread_id] = new RecordTrace(std::move(generic_dir), rank, true,
                                                    _pmu_event_list_collection[rank]);
+        _sampling_record_collection[thread_id] = new RecordTrace(std::move(sampling_dir), rank, true,
+                                                            _pmu_event_list_collection[rank]);
+        _ext_record_collection[thread_id] = new ExtRecordTrace(std::move(ext_dir), rank);
     }
 }
 
@@ -302,11 +331,12 @@ void RecordReader::load_backtrace(const char* path, const char* dwarf_dir, bool 
     }
 }
 
-void RecordReader::load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& node_id, const char* dwarf_dir, bool enable_dbinfo) {
-    auto rank = _id2rank.at(node_id + std::to_string(dir->self_desc()));
-    if (!_mpi_only || rank>=0) {
+void RecordReader::load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& node_id, const char* dwarf_dir, bool enable_dbinfo, uint64_t pid) {
+    auto rank = _id2rank.at(node_id + std::to_string(pid));
+    auto thread_id = node_id + std::to_string(dir->self_desc());
+    if (rank!=BROKEN_TRACE_ID || (_mpi_only && rank>=0)) {
         JSI_INFO("RecordReader::load(): loading backtrace... rank=%d\n", rank);
-        _load_backtrace(dir, rank, dwarf_dir, enable_dbinfo);
+        _load_backtrace(dir, thread_id, dwarf_dir, enable_dbinfo, rank);
     }
 }
 
@@ -319,7 +349,7 @@ void RecordReader::load_etr(const char* path) {
         }
         int rank = _id2rank[id_str];
         JSI_INFO("RecordReader::load(): loading extended trace... rank=%d\n", rank);
-        _record_ext_collection[rank] = loadRecordTraceExt(path);
+        _record_ext_collection[std::to_string(rank)] = loadRecordTraceExt(path);
     }
 }
 
@@ -407,7 +437,8 @@ void RecordReader::section_load(const char *dir, const char* dwarf_dir, bool ena
         auto backtrace_dir = root->openDirSection(StaticSectionDesc::BACKTRACE_SEC_ID, false);
         for (auto process_dir_iter = trace_dir->begin(); process_dir_iter != trace_dir->end(); ++process_dir_iter)
         {
-            spdlog::info("process_dir_iter desc: {}", process_dir_iter.getDesc());
+            // spdlog::info("process_dir_iter desc: {}", process_dir_iter.getDesc());
+            uint64_t pid = process_dir_iter.getDesc();
             auto process_dir = process_dir_iter.getDirSection();
             load_meta(process_dir, node_id);
             for (auto thread_dir_iter = process_dir->begin(); thread_dir_iter != process_dir->end(); ++thread_dir_iter)
@@ -415,22 +446,27 @@ void RecordReader::section_load(const char *dir, const char* dwarf_dir, bool ena
                 if (!thread_dir_iter.isa(pse::ral::SectionBase::DIR)) {
                     continue;
                 }
-                spdlog::info("thread_dir_iter desc: {}", thread_dir_iter.getDesc());
+                // spdlog::info("thread_dir_iter desc: {}", thread_dir_iter.getDesc());
                 auto thread_dir = thread_dir_iter.getDirSection();
-                spdlog::info("load meta success");
+                // spdlog::info("load meta success");
                 //load_backtrace(thread_dir, node_id, dwarf_dir, enable_dbinfo);
-                load_trace(std::move(thread_dir), node_id);
+                load_trace(std::move(thread_dir), node_id, pid);
             }
 
         }
         if (backtrace_dir!=nullptr) {
             for (auto process_dir_iter = backtrace_dir->begin(); process_dir_iter != backtrace_dir->end(); ++process_dir_iter)
             {
-                spdlog::info("process_dir_iter desc: {}", process_dir_iter.getDesc());
+                // spdlog::info("process_dir_iter desc: {}", process_dir_iter.getDesc());
+                uint64_t pid = process_dir_iter.getDesc();
                 auto process_dir = process_dir_iter.getDirSection();
                 if (enable_backtrace)
                 {
-                    load_backtrace(process_dir, node_id, dwarf_dir, enable_dbinfo);
+                    for (auto thread_dir_iter = process_dir->begin(); thread_dir_iter != process_dir->end(); ++thread_dir_iter)
+                    {
+                        auto thread_dir = thread_dir_iter.getDirSection();
+                        load_backtrace(thread_dir, node_id, dwarf_dir, enable_dbinfo, pid);
+                    }
                 }
             }
         }
@@ -445,7 +481,7 @@ void RecordReader::_load_trace(const char *fn, int rank) {
     lseek(fd, 0, SEEK_SET);// reset
     // load trace
     void *trace_mmap = mmap(0, fsize, PROT_READ, MAP_PRIVATE /*may use MAP_SHARED?*/, fd, 0);
-    _record_collection[rank] = new RecordTrace(trace_mmap, rank, -1, -1, fsize, true,
+    _record_collection[std::to_string(rank)] = new RecordTrace(trace_mmap, rank, -1, -1, fsize, true,
                                                _pmu_event_list_collection[rank],this->_model);
     // close the file
     close(fd);
@@ -461,15 +497,16 @@ void RecordReader::_load_backtrace(const char *fn, int rank, const char* dwarf_d
     auto bt_tree = jsi::toolkit::BacktraceTree::create_loading_bt_tree();
     bt_tree->backtrace_db_load(f, dwarf_dir, enable_dbinfo);
     fclose(f);
-    _backtrace_collection[rank] = bt_tree;
+    _backtrace_collection[std::to_string(rank)] = bt_tree;
 }
-void RecordReader::_load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, int rank, const char* dwarf_dir, bool enable_dbinfo) {
+void RecordReader::_load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& str_id, const char* dwarf_dir, bool enable_dbinfo, int rank) {
     auto bt_tree = jsi::toolkit::BacktraceTree::create_loading_bt_tree();
     bt_tree->backtrace_db_load(dir, dwarf_dir, enable_dbinfo);
-    _backtrace_collection[rank] = bt_tree;
+    bt_tree->set_rank(rank);
+    _backtrace_collection[str_id] = bt_tree;
 }
 
-RecordTrace &RecordReader::get_trace(int rank) {
+RecordTrace &RecordReader::get_trace(const std::string& rank) {
     return *(_record_collection[rank]);
 }
 
@@ -490,7 +527,7 @@ RankMetaCollection &RecordReader::get_all_meta_maps() {
     return _meta_collection;
 }
 
-BacktraceTree &RecordReader::get_backtrace(int rank) {
+BacktraceTree &RecordReader::get_backtrace(const std::string& rank) {
     return *(_backtrace_collection[rank]);
 }
 
@@ -736,4 +773,80 @@ void ParallelRecordReaderUnordered::load(const char *dir, const char* dwarf_dir,
         }
     }
     TOCK("ParallelRecordReaderUnordered::load load etr");
+}
+
+/**
+ * @brief Method for MATRIX device traces.
+ * 
+ * @return String representation for the whole trace.
+ */
+std::string AcclRecordTrace::to_string() {
+    std::stringstream result;
+    static auto event_list = new std::vector<std::string>();
+    if (event_list->empty()) {
+        parse_dev_pmu_events_list(dev_pmu_list_, event_list);
+    }
+    for (auto it = this->begin(); it != this->end(); ++it) {
+        if (std::string(dev_type_).substr(0, 6) == "MATRIX") {
+            auto current_record = static_cast<record_t*>(it.get());
+            // auto record_size = record_utils::get_record_size(current_record);
+            auto pmus = (uint64_t*)((char*)current_record + record_utils::get_record_size(current_record));
+            if (current_record->MsgType == event_ACCL_ACTIVITY_kernel) {
+                result << "Event Name: " << record_utils::get_record_name(current_record) << "\n";
+                result << "Start Time: " << current_record->timestamps.enter << "\n";
+                result << "End Time: "   << current_record->timestamps.exit  << "\n";
+                result << "Duration: "   << current_record->timestamps.exit - current_record->timestamps.enter << "\n";
+                result << "Record Size: "<< sizeof(mt_record_kernel_t) << "\n";
+                mt_record_kernel_t* rec = (mt_record_kernel_t*)current_record;
+                result << "Correlation ID:" << rec->correlation_id << "\n";
+                char buffer[1024] = {0};
+                string_section_->read(buffer, rec->op, 1024);
+                result << "Kernel name:" << buffer << "\n";
+                result << "Workload kind: DSP KERNEL\n";
+            } else {
+                result << it.to_string();
+            }
+
+            for (int i = 0; i < event_list->size(); ++i) {
+                result << (*event_list)[i] << " : (" << pmus[i] << ", " << pmus[i + dev_pmu_num_] << ", " << pmus[i + dev_pmu_num_] - pmus[i] << ")\n";
+            }
+
+        } else if (std::string(dev_type_).substr(0, 5) == "HYGON") {
+            
+            // todo: output kernel name
+
+            result << it.to_string();
+        }
+    }
+    return result.str();
+}
+
+size_t AcclRecordTrace::Iterator::record_size() const {
+    if (std::string(type_).substr(0, 6) == "MATRIX") return record_utils::get_record_size(static_cast<record_t*>(cur_));
+    else if (std::string(type_).substr(0, 5) == "HYGON") return sizeof(ext_record_accl);
+    else {
+        throw std::invalid_argument("Architecture not supported yet\n");
+        JSI_ERROR("Not yet support architecture [%s]\n.", type_);
+    }
+}
+
+std::string AcclRecordTrace::Iterator::to_string() {
+    std::stringstream result;
+    if (std::string(type_).substr(0, 6) == "MATRIX") {        
+        result << record_utils::to_string(static_cast<record_t*>(cur_));
+    } else if (std::string(type_).substr(0, 5) == "HYGON") {
+        auto current_record = static_cast<ext_record_accl*>(cur_);
+        char buffer[1024] = {0};
+        str_sec_->read(buffer, current_record->sym_key.key, 1024);
+        result << "Asynchronous workload name: " << buffer << "\n";
+        result << "Correlation ID: " << current_record->correlation_id << "\n";
+        result << "Start Time: " << current_record->begin_ns << "\n";
+        result << "End Time: "   << current_record->end_ns  << "\n";
+        result << "Duration: "   << current_record->end_ns - current_record->begin_ns << "\n";
+        result << "Record Size: "<< sizeof(ext_record_accl) << "\n";        
+    } else {
+        throw std::invalid_argument("Architecture not supported yet\n");
+        JSI_ERROR("Not yet support architecture [%s]\n.", type_);
+    }
+    return result.str();
 }

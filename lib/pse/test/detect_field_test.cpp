@@ -84,26 +84,26 @@ using namespace std::literals;
 constexpr const char R1_field[] = "time";
 int main()
 {
-    spdlog::info("{}", DetectField<R1>::has_field(R1_field));
-    spdlog::info("{}", DetectField<R1>::get_field_idx(R1_field));
-    spdlog::info("{}", DetectField<R1>::get_field_idx("xxx"));
+    // spdlog::info("{}", DetectField<R1>::has_field(R1_field));
+    // spdlog::info("{}", DetectField<R1>::get_field_idx(R1_field));
+    // spdlog::info("{}", DetectField<R1>::get_field_idx("xxx"));
     R3 r3;
     auto &time = GetFieldHelper<R3, []() { return "r2.r1.time"sv; }>::get_field(r3);
     time = 2;
-    spdlog::info("{}", r3.r2.r1.time);
-    spdlog::info("{}", GetFieldHelper<R3, []() { return "r2.r1.time"sv; }>::has_field());
-    spdlog::info("{}", GetFieldHelper<R3, []() { return "r1.t"sv; }>::has_field());
+    // spdlog::info("{}", r3.r2.r1.time);
+    // spdlog::info("{}", GetFieldHelper<R3, []() { return "r2.r1.time"sv; }>::has_field());
+    // spdlog::info("{}", GetFieldHelper<R3, []() { return "r1.t"sv; }>::has_field());
     auto res = DetectField<R3>::get_field_idx("r1");
-    spdlog::info("{}", res);
-    spdlog::info("{}", DetectField<R3>::has_field("r1.time"));
+    // spdlog::info("{}", res);
+    // spdlog::info("{}", DetectField<R3>::has_field("r1.time"));
     R2 r2;
     auto &time2 = GetField<R3, []() { return "r2.r1.time"sv; }, [] { return "r2.time"sv; }>::get_field(r3);
     time2 = 3;
     auto &time3 = GetField<R2, []() { return "r2.r1.time"sv; }, []() { return "r1.time"sv; }>::get_field(r2);
-    spdlog::info("{}", magic_enum::enum_name<E2>(transform<E1::E1_a>()));
+    // spdlog::info("{}", magic_enum::enum_name<E2>(transform<E1::E1_a>()));
 
     R2 r;
     r.c = 1000;
-    spdlog::info("{}", PSE_GETFIELD_V_OR(r, "c"sv, 0));
-    spdlog::info("{}", PSE_GETFIELD_V_OR(r, "d"sv, 0));
+    // spdlog::info("{}", PSE_GETFIELD_V_OR(r, "c"sv, 0));
+    // spdlog::info("{}", PSE_GETFIELD_V_OR(r, "d"sv, 0));
 }

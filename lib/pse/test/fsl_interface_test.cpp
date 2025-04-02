@@ -34,7 +34,7 @@ void read_test()
         dataSec->readRecord(i, &r);
         if (r.a != i || r.b != i || r.time != i)
         {
-            spdlog::error("test failed");
+            // spdlog::error("test failed");
             exit(-1);
         }
     }
@@ -44,6 +44,6 @@ int main()
 {
     write_test();
     read_test();
-    spdlog::info("pass");
+    // spdlog::info("pass");
     return 0;
 }

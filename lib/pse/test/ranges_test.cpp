@@ -71,7 +71,7 @@ void write_test()
 //                              return r1;
 //                          }) | ranges::views::filter([](const R1_transform &r1) { return r1.a % 2 == 0; }))
 //     {
-//         spdlog::info("r1_t: {}", r.a);
+//         // spdlog::info("r1_t: {}", r.a);
 //         assert(r.a % 2 == 0 && r.a == i);
 //         i += 2;
 //     }
@@ -81,7 +81,7 @@ void write_test()
 //     for (const auto &r : view | ranges::views::transform([](const R1 &r) { return *(R2 *)&r; }) |
 //                              ranges::views::filter([](const R2 &r) { return r.r1.a % 2 == 0; }))
 //     {
-//         spdlog::info("r1_t: {}", r.r1.a);
+//         // spdlog::info("r1_t: {}", r.r1.a);
 //         assert(r.r1.a % 2 == 0 && r.r1.a == i && r.pmus[0] == i + 2 && r.pmus[1] == i + 3);
 //         i += 2;
 //     }
@@ -106,21 +106,21 @@ void write_test()
 //     for (int i = 1; i < N; ++i)
 //     {
 //         assert(ints[i - 1] <= ints[i]); // operator <= will be used in here
-//         spdlog::info("ints: {}", ints[i].a);
+//         // spdlog::info("ints: {}", ints[i].a);
 //     }
 
 //     // test chunk_by
 //     // chunk_by and transform == aggreate?
 //     auto group_view =
 //         ints | ranges::views::chunk_by([](const R1_transform &a, const R1_transform &b) { return a.a == b.a; });
-//     spdlog::info("group_view size: {}", ranges::distance(group_view));
+//     // spdlog::info("group_view size: {}", ranges::distance(group_view));
 //     auto sum_view = group_view | ranges::views::transform([](auto &&group) {
 //                         return ranges::accumulate(group, 0, [](int acc, const R1_transform &r) { return acc + r.a; });
 //                     });
 //     assert(ranges::distance(sum_view) == ranges::distance(group_view));
 //     for (const auto &sum : sum_view)
 //     {
-//         spdlog::info("Sum of group: {}", sum);
+//         // spdlog::info("Sum of group: {}", sum);
 //     }
 // }
 

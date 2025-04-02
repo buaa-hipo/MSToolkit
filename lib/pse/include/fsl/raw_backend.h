@@ -197,12 +197,12 @@ public:
         }
         bool operator==(const Iterator &other) const
         {
-            // spdlog::info("compare {} and {}", (uint64_t)get(), (uint64_t)other.get());
+            // // spdlog::info("compare {} and {}", (uint64_t)get(), (uint64_t)other.get());
             return get() == other.get();
         }
         bool operator!=(const Iterator &other) const
         {
-            // spdlog::info("compare {} and {}", (uint64_t)get(), (uint64_t)other.get());
+            // // spdlog::info("compare {} and {}", (uint64_t)get(), (uint64_t)other.get());
             auto res = get() != other.get();
             return res;
         }
@@ -241,7 +241,7 @@ public:
             }
             else
             {
-                spdlog::error("not a dir section");
+                // spdlog::error("not a dir section");
                 throw std::runtime_error("not a dir section");
             }
         }
@@ -254,7 +254,7 @@ public:
             }
             else
             {
-                spdlog::error("not a data section");
+                // spdlog::error("not a data section");
                 throw std::runtime_error("not a data section");
             }
         }
@@ -267,7 +267,7 @@ public:
             }
             else
             {
-                spdlog::error("not a string section");
+                // spdlog::error("not a string section");
                 throw std::runtime_error("not a string section");
             }
         }
@@ -280,7 +280,7 @@ public:
             }
             else
             {
-                spdlog::error("not a stream section");
+                // spdlog::error("not a stream section");
                 throw std::runtime_error("not a stream section");
             }
         }

@@ -8,7 +8,7 @@ SET(HEADER ${JSI_INCLUDE}/compress/compress.h ${JSI_INCLUDE}/compress/snappy_com
 
 add_executable(jsidecompress jsidecompress.cpp ${HEADER})
 target_compile_features(jsidecompress PRIVATE cxx_std_17)
-target_include_directories(jsidecompress PRIVATE ${JSI_INCLUDE} ${LIBUNWIND_INCLUDE_DIR} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${MPI_INCLUDE_PATH})
-target_link_libraries(jsidecompress ${JSI_LIBRARY} ${MPI_LIBRARIES})
+target_include_directories(jsidecompress PRIVATE ${JSI_INCLUDE} ${LIBUNWIND_INCLUDE_DIR} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${MPI_INCLUDE_PATH} ${LLVMOpenMP_INCLUDE_DIRS})
+target_link_libraries(jsidecompress ${JSI_LIBRARY} ${MPI_LIBRARIES} ${LLVMOpenMP_LIBRARIES})
 
 install(TARGETS jsidecompress DESTINATION bin)

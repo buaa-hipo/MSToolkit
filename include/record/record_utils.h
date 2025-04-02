@@ -21,9 +21,458 @@ std::string get_record_name(record_t *r) {
 inline __attribute__((always_inline))
 size_t get_record_size(record_t* r) {
     switch(r->MsgType) {
-		case event_hipLaunchKernel: return sizeof(record_activity_launch_t);
-		case event_hipMemcpy: return sizeof(record_activity_memcpy_t);
+		case event_hipDeviceEnablePeerAccess: return sizeof(record_activity_t);
+		case event_hipImportExternalMemory: return sizeof(record_activity_t);
+		case event_hipFuncSetSharedMemConfig: return sizeof(record_activity_t);
+		case event_hipDestroyExternalMemory: return sizeof(record_activity_t);
+		case event_hipProfilerStop: return sizeof(record_activity_t);
+		case event_hipMallocPitch: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMalloc: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMemsetD16: return sizeof(record_activity_t);
+		case event_hipDrvMemcpy2DUnaligned: return sizeof(record_activity_memcpy_t);
+		case event_hipExtStreamGetCUMask: return sizeof(record_activity_t);
+		case event_hipEventRecord: return sizeof(record_activity_event_t);
+		case event_hipCtxSynchronize: return sizeof(record_activity_t);
+		case event_hipSetDevice: return sizeof(record_activity_t);
+		case event_hipCtxGetApiVersion: return sizeof(record_activity_t);
+		case event_hipMemcpyFromSymbolAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipExtGetLinkTypeAndHopCount: return sizeof(record_activity_t);
+		case event___hipPopCallConfiguration: return sizeof(record_activity_t);
+		case event_hipModuleOccupancyMaxActiveBlocksPerMultiprocessor: return sizeof(record_activity_t);
+		case event_hipMemset3D: return sizeof(record_activity_t);
+		case event_hipDestroySurfaceObject: return sizeof(record_activity_t);
+		case event_hipStreamCreateWithPriority: return sizeof(record_activity_t);
+		case event_hipMemcpy2DToArray: return sizeof(record_activity_memcpy_t);
+		case event_hipMemsetD8Async: return sizeof(record_activity_t);
+		case event_hipCtxGetCacheConfig: return sizeof(record_activity_t);
+		case event_hipStreamWaitEvent: return sizeof(record_activity_wait_t);
+		case event_hipDeviceGetStreamPriorityRange: return sizeof(record_activity_t);
+		case event_hipModuleLoad: return sizeof(record_activity_t);
+		case event_hipMemcpyToSymbolAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipDrvPointerGetAttributes: return sizeof(record_activity_t);
+		case event_hipDevicePrimaryCtxSetFlags: return sizeof(record_activity_t);
+		case event_hipArrayDestroy: return sizeof(record_activity_free_t);
+		case event_hipLaunchCooperativeKernel: return sizeof(record_activity_launch_t);
+		case event_hipLaunchCooperativeKernelMultiDevice: return sizeof(record_activity_launch_t);
 		case event_hipMemcpyAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipMalloc3DArray: return sizeof(record_activity_mem_alloc_t);
+		case event_hipCtxGetCurrent: return sizeof(record_activity_t);
+		case event_hipExternalMemoryGetMappedBuffer: return sizeof(record_activity_t);
+		case event_hipDevicePrimaryCtxGetState: return sizeof(record_activity_t);
+		case event_hipEventQuery: return sizeof(record_activity_t);
+		case event_hipStreamWaitValue64: return sizeof(record_activity_t);
+		case event_hipEventCreate: return sizeof(record_activity_event_t);
+		case event_hipMemGetAddressRange: return sizeof(record_activity_t);
+		case event_hipStreamWriteValue32: return sizeof(record_activity_t);
+		case event_hipMemcpyFromSymbol: return sizeof(record_activity_memcpy_t);
+		case event_hipArrayCreate: return sizeof(record_activity_mem_alloc_t);
+		case event_hipStreamAttachMemAsync: return sizeof(record_activity_t);
+		case event_hipStreamGetFlags: return sizeof(record_activity_t);
+		case event_hipMallocArray: return sizeof(record_activity_mem_alloc_t);
+		case event_hipCtxGetSharedMemConfig: return sizeof(record_activity_t);
+		case event_hipDeviceDisablePeerAccess: return sizeof(record_activity_t);
+		case event_hipModuleOccupancyMaxPotentialBlockSize: return sizeof(record_activity_t);
+		case event_hipMemPtrGetInfo: return sizeof(record_activity_t);
+		case event_hipFuncGetAttribute: return sizeof(record_activity_t);
+		case event_hipCtxGetFlags: return sizeof(record_activity_t);
+		case event_hipStreamDestroy: return sizeof(record_activity_t);
+		case event___hipPushCallConfiguration: return sizeof(record_activity_t);
+		case event_hipMemset3DAsync: return sizeof(record_activity_t);
+		case event_hipDeviceGetPCIBusId: return sizeof(record_activity_t);
+		case event_RESERVED_59: return sizeof(record_activity_t);
+		case event_hipInit: return sizeof(record_activity_t);
+		case event_hipMemcpyAtoH: return sizeof(record_activity_memcpy_t);
+		case event_hipStreamGetPriority: return sizeof(record_activity_t);
+		case event_hipMemset2D: return sizeof(record_activity_t);
+		case event_hipMemset2DAsync: return sizeof(record_activity_t);
+		case event_hipDeviceCanAccessPeer: return sizeof(record_activity_t);
+		case event_hipLaunchByPtr: return sizeof(record_activity_t);
+		case event_hipLaunchKernel: return sizeof(record_activity_launch_t);
+		case event_hipCtxDestroy: return sizeof(record_activity_t);
+		case event_hipMemsetD16Async: return sizeof(record_activity_t);
+		case event_hipModuleUnload: return sizeof(record_activity_t);
+		case event_hipHostUnregister: return sizeof(record_activity_t);
+		case event_hipImportExternalSemaphore: return sizeof(record_activity_t);
+		case event_hipExtStreamCreateWithCUMask: return sizeof(record_activity_t);
+		case event_hipExtGetNearstCPU: return sizeof(record_activity_t);
+		case event_hipStreamSynchronize: return sizeof(record_activity_wait_t);
+		case event_hipDeviceSetCacheConfig: return sizeof(record_activity_t);
+		case event_hipMemcpyHtoD: return sizeof(record_activity_memcpy_t);
+		case event_hipModuleGetGlobal: return sizeof(record_activity_t);
+		case event_hipMemcpyHtoA: return sizeof(record_activity_memcpy_t);
+		case event_hipCtxCreate: return sizeof(record_activity_t);
+		case event_hipMemcpy2D: return sizeof(record_activity_memcpy_t);
+		case event_hipIpcCloseMemHandle: return sizeof(record_activity_t);
+		case event_hipDestroyExternalSemaphore: return sizeof(record_activity_t);
+		case event_hipChooseDevice: return sizeof(record_activity_t);
+		case event_hipDeviceSetSharedMemConfig: return sizeof(record_activity_t);
+		case event_hipMallocMipmappedArray: return sizeof(record_activity_mem_alloc_t);
+		case event_hipSetupArgument: return sizeof(record_activity_t);
+		case event_hipIpcGetEventHandle: return sizeof(record_activity_t);
+		case event_hipFreeArray: return sizeof(record_activity_free_t);
+		case event_hipCtxSetCacheConfig: return sizeof(record_activity_t);
+		case event_hipFuncSetCacheConfig: return sizeof(record_activity_t);
+		case event_hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags: return sizeof(record_activity_t);
+		case event_hipModuleGetTexRef: return sizeof(record_activity_t);
+		case event_hipFuncSetAttribute: return sizeof(record_activity_t);
+		case event_hipEventElapsedTime: return sizeof(record_activity_t);
+		case event_hipConfigureCall: return sizeof(record_activity_t);
+		case event_hipGetMipmappedArrayLevel: return sizeof(record_activity_t);
+		case event_hipMemcpy3DAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipSignalExternalSemaphoresAsync: return sizeof(record_activity_t);
+		case event_hipEventDestroy: return sizeof(record_activity_event_t);
+		case event_hipCtxPopCurrent: return sizeof(record_activity_t);
+		case event_hipPointerGetAttribute: return sizeof(record_activity_t);
+		case event_hipMemPrefetchAsync: return sizeof(record_activity_t);
+		case event_hipGetSymbolAddress: return sizeof(record_activity_t);
+		case event_hipHostGetFlags: return sizeof(record_activity_t);
+		case event_hipHostMalloc: return sizeof(record_activity_mem_alloc_t);
+		case event_hipCtxSetSharedMemConfig: return sizeof(record_activity_t);
+		case event_hipFreeMipmappedArray: return sizeof(record_activity_free_t);
+		case event_hipMemGetInfo: return sizeof(record_activity_t);
+		case event_hipDeviceReset: return sizeof(record_activity_t);
+		case event_hipMemset: return sizeof(record_activity_t);
+		case event_hipMemsetD8: return sizeof(record_activity_t);
+		case event_hipMemcpyParam2DAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipHostRegister: return sizeof(record_activity_t);
+		case event_hipDriverGetVersion: return sizeof(record_activity_t);
+		case event_hipArray3DCreate: return sizeof(record_activity_mem_alloc_t);
+		case event_hipIpcOpenMemHandle: return sizeof(record_activity_t);
+		case event_hipStreamWaitValue32: return sizeof(record_activity_t);
+		case event_hipGetLastError: return sizeof(record_activity_t);
+		case event_hipGetDeviceFlags: return sizeof(record_activity_t);
+		case event_hipDeviceGetSharedMemConfig: return sizeof(record_activity_t);
+		case event_hipDrvMemcpy3D: return sizeof(record_activity_memcpy_t);
+		case event_hipMemcpy2DFromArray: return sizeof(record_activity_memcpy_t);
+		case event_hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags: return sizeof(record_activity_t);
+		case event_hipSetDeviceFlags: return sizeof(record_activity_t);
+		case event_hipHccModuleLaunchKernel: return sizeof(record_activity_launch_t);
+		case event_hipFree: return sizeof(record_activity_free_t);
+		case event_hipOccupancyMaxPotentialBlockSize: return sizeof(record_activity_t);
+		case event_hipDeviceGetAttribute: return sizeof(record_activity_t);
+		case event_hipDeviceComputeCapability: return sizeof(record_activity_t);
+		case event_hipWaitExternalSemaphoresAsync: return sizeof(record_activity_t);
+		case event_hipCtxDisablePeerAccess: return sizeof(record_activity_t);
+		case event_hipMallocManaged: return sizeof(record_activity_mem_alloc_t);
+		case event_hipDeviceGetByPCIBusId: return sizeof(record_activity_t);
+		case event_hipIpcGetMemHandle: return sizeof(record_activity_t);
+		case event_hipMemcpyHtoDAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipCtxGetDevice: return sizeof(record_activity_t);
+		case event_hipMemcpyDtoD: return sizeof(record_activity_memcpy_t);
+		case event_hipModuleLoadData: return sizeof(record_activity_t);
+		case event_hipDevicePrimaryCtxRelease: return sizeof(record_activity_t);
+		case event_hipOccupancyMaxActiveBlocksPerMultiprocessor: return sizeof(record_activity_t);
+		case event_hipCtxSetCurrent: return sizeof(record_activity_t);
+		case event_hipStreamCreate: return sizeof(record_activity_t);
+		case event_hipDevicePrimaryCtxRetain: return sizeof(record_activity_t);
+		case event_hipDeviceGet: return sizeof(record_activity_t);
+		case event_hipStreamCreateWithFlags: return sizeof(record_activity_t);
+		case event_hipMemcpyFromArray: return sizeof(record_activity_memcpy_t);
+		case event_hipMemcpy2DAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipFuncGetAttributes: return sizeof(record_activity_t);
+		case event_hipGetSymbolSize: return sizeof(record_activity_t);
+		case event_hipCreateSurfaceObject: return sizeof(record_activity_t);
+		case event_hipMemAdvise: return sizeof(record_activity_t);
+		case event_hipEventCreateWithFlags: return sizeof(record_activity_event_t);
+		case event_hipStreamQuery: return sizeof(record_activity_t);
+		case event_hipMemcpy3D: return sizeof(record_activity_memcpy_t);
+		case event_hipMemcpyToSymbol: return sizeof(record_activity_memcpy_t);
+		case event_hipMemcpy: return sizeof(record_activity_memcpy_t);
+		case event_hipStreamWriteValue64: return sizeof(record_activity_t);
+		case event_hipPeekAtLastError: return sizeof(record_activity_t);
+		case event_hipExtLaunchMultiKernelMultiDevice: return sizeof(record_activity_launch_t);
+		case event_hipStreamAddCallback: return sizeof(record_activity_t);
+		case event_hipMemcpyToArray: return sizeof(record_activity_memcpy_t);
+		case event_hipMemsetD32: return sizeof(record_activity_t);
+		case event_hipExtModuleLaunchKernel: return sizeof(record_activity_launch_t);
+		case event_hipDeviceSynchronize: return sizeof(record_activity_t);
+		case event_hipDeviceGetCacheConfig: return sizeof(record_activity_t);
+		case event_hipMemRangeGetAttribute: return sizeof(record_activity_t);
+		case event_hipMalloc3D: return sizeof(record_activity_mem_alloc_t);
+		case event_hipPointerGetAttributes: return sizeof(record_activity_t);
+		case event_hipMemcpy2DToArrayAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipMemsetAsync: return sizeof(record_activity_t);
+		case event_hipDeviceGetName: return sizeof(record_activity_t);
+		case event_hipModuleOccupancyMaxPotentialBlockSizeWithFlags: return sizeof(record_activity_t);
+		case event_hipCtxPushCurrent: return sizeof(record_activity_t);
+		case event_hipMemcpyPeer: return sizeof(record_activity_memcpy_t);
+		case event_hipEventSynchronize: return sizeof(record_activity_wait_t);
+		case event_hipExtMallocManaged: return sizeof(record_activity_t);
+		case event_hipMemcpyDtoDAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipProfilerStart: return sizeof(record_activity_t);
+		case event_hipExtMallocWithFlags: return sizeof(record_activity_mem_alloc_t);
+		case event_hipCtxEnablePeerAccess: return sizeof(record_activity_t);
+		case event_hipMemcpyDtoHAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipModuleLaunchKernel: return sizeof(record_activity_launch_t);
+		case event_hipMemAllocPitch: return sizeof(record_activity_mem_alloc_t);
+		case event_hipExtLaunchKernel: return sizeof(record_activity_launch_t);
+		case event_hipMemcpy2DFromArrayAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipDeviceGetLimit: return sizeof(record_activity_t);
+		case event_hipModuleLoadDataEx: return sizeof(record_activity_t);
+		case event_hipRuntimeGetVersion: return sizeof(record_activity_t);
+		case event_hipHostFree: return sizeof(record_activity_free_t);
+		case event_hipDeviceGetP2PAttribute: return sizeof(record_activity_t);
+		case event_hipMemcpyPeerAsync: return sizeof(record_activity_memcpy_async_t);
+		case event_hipGetDeviceProperties: return sizeof(record_activity_t);
+		case event_hipMemcpyDtoH: return sizeof(record_activity_memcpy_t);
+		case event_hipMemcpyWithStream: return sizeof(record_activity_memcpy_async_t);
+		case event_hipDeviceTotalMem: return sizeof(record_activity_t);
+		case event_hipHostGetDevicePointer: return sizeof(record_activity_t);
+		case event_hipMemRangeGetAttributes: return sizeof(record_activity_t);
+		case event_hipExtHostMalloc: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMemcpyParam2D: return sizeof(record_activity_memcpy_t);
+		case event_hipDevicePrimaryCtxReset: return sizeof(record_activity_t);
+		case event_hipModuleGetFunction: return sizeof(record_activity_t);
+		case event_hipMemsetD32Async: return sizeof(record_activity_t);
+		case event_hipGetDevice: return sizeof(record_activity_t);
+		case event_hipGetDeviceCount: return sizeof(record_activity_t);
+		case event_hipIpcOpenEventHandle: return sizeof(record_activity_t);
+		case event_hipDrvMemcpy3DAsync: return sizeof(record_activity_memcpy_async_t);
+		case event___hipPopCallConfiguration_internal: return sizeof(record_activity_t);
+		case event___hipPushCallConfiguration_internal: return sizeof(record_activity_t);
+		case event_hipDeviceGetDefaultMemPool: return sizeof(record_activity_t);
+		case event_hipDeviceGetMemPool: return sizeof(record_activity_t);
+		case event_hipDeviceGetUuid: return sizeof(record_activity_t);
+		case event_hipDeviceSetMemPool: return sizeof(record_activity_t);
+		case event_hipFreeAsync: return sizeof(record_activity_free_t);
+		case event_hipFreeHost: return sizeof(record_activity_free_t);
+		case event_hipGLGetDevices: return sizeof(record_activity_t);
+		case event_hipGetChannelDesc: return sizeof(record_activity_t);
+		case event_hipGetErrorString: return sizeof(record_activity_t);
+		case event_hipGraphAddChildGraphNode: return sizeof(record_activity_t);
+		case event_hipGraphAddDependencies: return sizeof(record_activity_t);
+		case event_hipGraphAddEmptyNode: return sizeof(record_activity_t);
+		case event_hipGraphAddEventRecordNode: return sizeof(record_activity_t);
+		case event_hipGraphAddEventWaitNode: return sizeof(record_activity_t);
+		case event_hipGraphAddHostNode: return sizeof(record_activity_t);
+		case event_hipGraphAddKernelNode: return sizeof(record_activity_t);
+		case event_hipGraphAddMemcpyNode: return sizeof(record_activity_t);
+		case event_hipGraphAddMemcpyNode1D: return sizeof(record_activity_t);
+		case event_hipGraphAddMemcpyNodeFromSymbol: return sizeof(record_activity_t);
+		case event_hipGraphAddMemcpyNodeToSymbol: return sizeof(record_activity_t);
+		case event_hipGraphAddMemsetNode: return sizeof(record_activity_t);
+		case event_hipGraphChildGraphNodeGetGraph: return sizeof(record_activity_t);
+		case event_hipGraphClone: return sizeof(record_activity_t);
+		case event_hipGraphCreate: return sizeof(record_activity_t);
+		case event_hipGraphDestroy: return sizeof(record_activity_t);
+		case event_hipGraphDestroyNode: return sizeof(record_activity_t);
+		case event_hipGraphEventRecordNodeGetEvent: return sizeof(record_activity_t);
+		case event_hipGraphEventRecordNodeSetEvent: return sizeof(record_activity_t);
+		case event_hipGraphEventWaitNodeGetEvent: return sizeof(record_activity_t);
+		case event_hipGraphEventWaitNodeSetEvent: return sizeof(record_activity_t);
+		case event_hipGraphExecChildGraphNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExecDestroy: return sizeof(record_activity_t);
+		case event_hipGraphExecEventRecordNodeSetEvent: return sizeof(record_activity_t);
+		case event_hipGraphExecEventWaitNodeSetEvent: return sizeof(record_activity_t);
+		case event_hipGraphExecHostNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExecKernelNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExecMemcpyNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExecMemcpyNodeSetParams1D: return sizeof(record_activity_t);
+		case event_hipGraphExecMemcpyNodeSetParamsFromSymbol: return sizeof(record_activity_t);
+		case event_hipGraphExecMemcpyNodeSetParamsToSymbol: return sizeof(record_activity_t);
+		case event_hipGraphExecMemsetNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExecUpdate: return sizeof(record_activity_t);
+		case event_hipGraphGetEdges: return sizeof(record_activity_t);
+		case event_hipGraphGetNodes: return sizeof(record_activity_t);
+		case event_hipGraphGetRootNodes: return sizeof(record_activity_t);
+		case event_hipGraphHostNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphHostNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphInstantiate: return sizeof(record_activity_t);
+		case event_hipGraphInstantiateWithFlags: return sizeof(record_activity_t);
+		case event_hipGraphKernelNodeGetAttribute: return sizeof(record_activity_t);
+		case event_hipGraphKernelNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphKernelNodeSetAttribute: return sizeof(record_activity_t);
+		case event_hipGraphKernelNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphLaunch: return sizeof(record_activity_t);
+		case event_hipGraphMemcpyNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphMemcpyNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphMemcpyNodeSetParams1D: return sizeof(record_activity_t);
+		case event_hipGraphMemcpyNodeSetParamsFromSymbol: return sizeof(record_activity_t);
+		case event_hipGraphMemcpyNodeSetParamsToSymbol: return sizeof(record_activity_t);
+		case event_hipGraphMemsetNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphMemsetNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphNodeFindInClone: return sizeof(record_activity_t);
+		case event_hipGraphNodeGetDependencies: return sizeof(record_activity_t);
+		case event_hipGraphNodeGetDependentNodes: return sizeof(record_activity_t);
+		case event_hipGraphNodeGetType: return sizeof(record_activity_t);
+		case event_hipGraphRemoveDependencies: return sizeof(record_activity_t);
+		case event_hipGraphicsGLRegisterBuffer: return sizeof(record_activity_t);
+		case event_hipGraphicsMapResources: return sizeof(record_activity_t);
+		case event_hipGraphicsResourceGetMappedPointer: return sizeof(record_activity_t);
+		case event_hipGraphicsUnmapResources: return sizeof(record_activity_t);
+		case event_hipGraphicsUnregisterResource: return sizeof(record_activity_t);
+		case event_hipHostAlloc: return sizeof(record_activity_mem_alloc_t);
+		case event_hipLaunchKernel_internal: return sizeof(record_activity_launch_t);
+		case event_hipMallocAsync: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMallocFromPoolAsync: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMallocHost: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMemAddressFree: return sizeof(record_activity_free_t);
+		case event_hipMemAddressReserve: return sizeof(record_activity_t);
+		case event_hipMemAllocHost: return sizeof(record_activity_mem_alloc_t);
+		case event_hipMemCreate: return sizeof(record_activity_t);
+		case event_hipMemExportToShareableHandle: return sizeof(record_activity_t);
+		case event_hipMemGetAccess: return sizeof(record_activity_t);
+		case event_hipMemGetAllocationGranularity: return sizeof(record_activity_t);
+		case event_hipMemGetAllocationPropertiesFromHandle: return sizeof(record_activity_t);
+		case event_hipMemImportFromShareableHandle: return sizeof(record_activity_t);
+		case event_hipMemMap: return sizeof(record_activity_t);
+		case event_hipMemMapArrayAsync: return sizeof(record_activity_t);
+		case event_hipMemPoolCreate: return sizeof(record_activity_t);
+		case event_hipMemPoolDestroy: return sizeof(record_activity_t);
+		case event_hipMemPoolExportPointer: return sizeof(record_activity_t);
+		case event_hipMemPoolExportToShareableHandle: return sizeof(record_activity_t);
+		case event_hipMemPoolGetAccess: return sizeof(record_activity_t);
+		case event_hipMemPoolGetAttribute: return sizeof(record_activity_t);
+		case event_hipMemPoolImportFromShareableHandle: return sizeof(record_activity_t);
+		case event_hipMemPoolImportPointer: return sizeof(record_activity_t);
+		case event_hipMemPoolSetAccess: return sizeof(record_activity_t);
+		case event_hipMemPoolSetAttribute: return sizeof(record_activity_t);
+		case event_hipMemPoolTrimTo: return sizeof(record_activity_t);
+		case event_hipMemRelease: return sizeof(record_activity_t);
+		case event_hipMemRetainAllocationHandle: return sizeof(record_activity_t);
+		case event_hipMemSetAccess: return sizeof(record_activity_t);
+		case event_hipMemUnmap: return sizeof(record_activity_t);
+		case event_hipMipmappedArrayCreate: return sizeof(record_activity_t);
+		case event_hipMipmappedArrayDestroy: return sizeof(record_activity_free_t);
+		case event_hipMipmappedArrayGetLevel: return sizeof(record_activity_t);
+		case event_hipRegisterActivityCallback: return sizeof(record_activity_t);
+		case event_hipRegisterApiCallback: return sizeof(record_activity_t);
+		case event_hipRemoveActivityCallback: return sizeof(record_activity_t);
+		case event_hipRemoveApiCallback: return sizeof(record_activity_t);
+		case event_hipStreamBeginCapture: return sizeof(record_activity_t);
+		case event_hipStreamEndCapture: return sizeof(record_activity_t);
+		case event_hipStreamGetCaptureInfo: return sizeof(record_activity_t);
+		case event_hipStreamGetCaptureInfo_v2: return sizeof(record_activity_t);
+		case event_hipStreamIsCapturing: return sizeof(record_activity_t);
+		case event_hipStreamUpdateCaptureDependencies: return sizeof(record_activity_t);
+		case event_hipTexRefGetAddress: return sizeof(record_activity_t);
+		case event_hipTexRefGetFlags: return sizeof(record_activity_t);
+		case event_hipTexRefGetFormat: return sizeof(record_activity_t);
+		case event_hipTexRefGetMaxAnisotropy: return sizeof(record_activity_t);
+		case event_hipTexRefGetMipMappedArray: return sizeof(record_activity_t);
+		case event_hipTexRefGetMipmapLevelBias: return sizeof(record_activity_t);
+		case event_hipTexRefGetMipmapLevelClamp: return sizeof(record_activity_t);
+		case event_hipTexRefSetAddress: return sizeof(record_activity_t);
+		case event_hipTexRefSetAddress2D: return sizeof(record_activity_t);
+		case event_hipTexRefSetArray: return sizeof(record_activity_t);
+		case event_hipTexRefSetBorderColor: return sizeof(record_activity_t);
+		case event_hipTexRefSetFlags: return sizeof(record_activity_t);
+		case event_hipTexRefSetFormat: return sizeof(record_activity_t);
+		case event_hipTexRefSetMaxAnisotropy: return sizeof(record_activity_t);
+		case event_hipTexRefSetMipmapLevelBias: return sizeof(record_activity_t);
+		case event_hipTexRefSetMipmapLevelClamp: return sizeof(record_activity_t);
+		case event_hipTexRefSetMipmappedArray: return sizeof(record_activity_t);
+		case event_hipGraphDebugDotPrint: return sizeof(record_activity_t);
+		case event_hipGraphKernelNodeCopyAttributes: return sizeof(record_activity_t);
+		case event_hipGraphNodeGetEnabled: return sizeof(record_activity_t);
+		case event_hipGraphNodeSetEnabled: return sizeof(record_activity_t);
+		case event_hipPointerSetAttribute: return sizeof(record_activity_t);
+		case event_hipGraphAddMemAllocNode: return sizeof(record_activity_t);
+		case event_hipGraphAddMemFreeNode: return sizeof(record_activity_t);
+		case event_hipGraphMemAllocNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphMemFreeNodeGetParams: return sizeof(record_activity_t);
+		case event_hipArray3DGetDescriptor: return sizeof(record_activity_t);
+		case event_hipArrayGetDescriptor: return sizeof(record_activity_t);
+		case event_hipArrayGetInfo: return sizeof(record_activity_t);
+		case event_hipStreamGetDevice: return sizeof(record_activity_t);
+		case event_hipDeviceGetGraphMemAttribute: return sizeof(record_activity_t);
+		case event_hipDeviceGraphMemTrim: return sizeof(record_activity_t);
+		case event_hipDeviceSetGraphMemAttribute: return sizeof(record_activity_t);
+		case event_hipDeviceSetLimit: return sizeof(record_activity_t);
+		case event_hipGraphAddExternalSemaphoresSignalNode: return sizeof(record_activity_t);
+		case event_hipGraphAddExternalSemaphoresWaitNode: return sizeof(record_activity_t);
+		case event_hipGraphExecExternalSemaphoresSignalNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExecExternalSemaphoresWaitNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExternalSemaphoresSignalNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphExternalSemaphoresSignalNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphExternalSemaphoresWaitNodeGetParams: return sizeof(record_activity_t);
+		case event_hipGraphExternalSemaphoresWaitNodeSetParams: return sizeof(record_activity_t);
+		case event_hipGraphReleaseUserObject: return sizeof(record_activity_t);
+		case event_hipGraphRetainUserObject: return sizeof(record_activity_t);
+		case event_hipGraphUpload: return sizeof(record_activity_t);
+		case event_hipGraphicsGLRegisterImage: return sizeof(record_activity_t);
+		case event_hipGraphicsSubResourceGetMappedArray: return sizeof(record_activity_t);
+		case event_hipLaunchHostFunc: return sizeof(record_activity_t);
+		case event_hipTexRefGetArray: return sizeof(record_activity_t);
+		case event_hipTexRefGetBorderColor: return sizeof(record_activity_t);
+		case event_hipTexRefGetMipmappedArray: return sizeof(record_activity_t);
+		case event_hipThreadExchangeStreamCaptureMode: return sizeof(record_activity_t);
+		case event_hipUserObjectCreate: return sizeof(record_activity_t);
+		case event_hipUserObjectRelease: return sizeof(record_activity_t);
+		case event_hipUserObjectRetain: return sizeof(record_activity_t);
+		case event_hiprtcAddNameExpression: return sizeof(record_activity_t);
+		case event_hiprtcCompileProgram: return sizeof(record_activity_t);
+		case event_hiprtcCreateProgram: return sizeof(record_activity_t);
+		case event_hiprtcCreateProgram_internal: return sizeof(record_activity_t);
+		case event_hiprtcDestroyProgram: return sizeof(record_activity_t);
+		case event_hiprtcGetBitcode: return sizeof(record_activity_t);
+		case event_hiprtcGetBitcodeSize: return sizeof(record_activity_t);
+		case event_hiprtcGetCode: return sizeof(record_activity_t);
+		case event_hiprtcGetCodeSize: return sizeof(record_activity_t);
+		case event_hiprtcGetLoweredName: return sizeof(record_activity_t);
+		case event_hiprtcGetProgramLog: return sizeof(record_activity_t);
+		case event_hiprtcGetProgramLogSize: return sizeof(record_activity_t);
+		case event_hiprtcLinkAddData: return sizeof(record_activity_t);
+		case event_hiprtcLinkAddFile: return sizeof(record_activity_t);
+		case event_hiprtcLinkComplete: return sizeof(record_activity_t);
+		case event_hiprtcLinkCreate: return sizeof(record_activity_t);
+		case event_hiprtcLinkDestroy: return sizeof(record_activity_t);
+		case event_hiprtcVersion: return sizeof(record_activity_t);
+		case event_hipFuncGetModule: return sizeof(record_activity_t);
+		case event_ACCL_API_group_create: return sizeof(mt_record_kernel_launch_t);
+		case event_ACCL_API_group_create_masked_launch: return sizeof(mt_record_kernel_launch_t);
+		case event_ACCL_API_group_create_launch: return sizeof(mt_record_kernel_launch_t);
+		case event_ACCL_API_group_exec: return sizeof(mt_record_kernel_launch_t);
+		case event_ACCL_API_group_wait: return sizeof(mt_record_group_wait_t);
+		case event_ACCL_API_group_destroy: return sizeof(mt_record_kernel_launch_t);
+		case event_ACCL_API_malloc: return sizeof(mt_record_malloc_t);
+		case event_ACCL_API_free: return sizeof(mt_record_free_t);
+		case event_ACCL_API_vector_malloc: return sizeof(mt_record_malloc_t);
+		case event_ACCL_API_vector_free: return sizeof(mt_record_free_t);
+		case event_ACCL_API_scalar_malloc: return sizeof(mt_record_malloc_t);
+		case event_ACCL_API_scalar_free: return sizeof(mt_record_free_t);
+		case event_ACCL_API_hbm_malloc: return sizeof(mt_record_malloc_t);
+		case event_ACCL_API_hbm_free: return sizeof(mt_record_free_t);
+		case event_ACCL_API_vector_load: return sizeof(mt_record_memcpy_t);
+		case event_ACCL_API_vector_store: return sizeof(mt_record_memcpy_t);
+		case event_ACCL_API_scalar_load: return sizeof(mt_record_memcpy_t);
+		case event_ACCL_API_scalar_store: return sizeof(mt_record_memcpy_t);
+		case event_ACCL_API_vector_load_async: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_vector_store_async: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_scalar_load_async: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_scalar_store_async: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_dma_p2p: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_dma_broadcast: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_dma_segment: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_dma_sg: return sizeof(mt_record_memcpy_async_t);
+		case event_ACCL_API_dma_wait: return sizeof(mt_record_dma_wait_t);
+		case event_ACCL_API_dma_wait_p2p: return sizeof(mt_record_dma_wait_t);
+		case event_ACCL_API_dma_wait_sg: return sizeof(mt_record_dma_wait_t);
+		case event_ACCL_USER_FUNC: return sizeof(record_activity_t);
+		case event_ACCL_API_dat_load: return sizeof(mt_record_driver_t);
+		case event_ACCL_API_dat_unload: return sizeof(mt_record_driver_t);
+		case event_ACCL_API_dev_close: return sizeof(mt_record_driver_t);
+		case event_ACCL_API_dev_open: return sizeof(mt_record_driver_t);
+		case event_ACCL_API_dev_owner: return sizeof(record_activity_t);
+		case event_ACCL_API_group_get_status: return sizeof(record_activity_t);
+		case event_ACCL_API_barrier_create: return sizeof(mt_record_barrier_t);
+		case event_ACCL_API_barrier_destroy: return sizeof(mt_record_barrier_t);
+		case event_ACCL_API_rwlock_create: return sizeof(mt_record_rwlock_t);
+		case event_ACCL_API_rwlock_destroy: return sizeof(mt_record_rwlock_t);
+		case event_ACCL_API_intr_send: return sizeof(mt_record_intr_t);
+		case event_ACCL_API_intr_reg: return sizeof(mt_record_intr_t);
+		case event_ACCL_API_group_barrier: return sizeof(mt_record_dev_barrier_t);
+		case event_ACCL_API_core_barrier: return sizeof(mt_record_dev_barrier_t);
+		case event_ACCL_API_core_barrier_wait: return sizeof(mt_record_dev_barrier_t);
+		case event_ACCL_API_rwlock_try_rdlock: return sizeof(mt_record_dev_rwlock_t);
+		case event_ACCL_API_rwlock_try_wrlock: return sizeof(mt_record_dev_rwlock_t);
+		case event_ACCL_API_rwlock_rdlock: return sizeof(mt_record_dev_rwlock_t);
+		case event_ACCL_API_rwlock_wrlock: return sizeof(mt_record_dev_rwlock_t);
+		case event_ACCL_API_rwlock_unlock: return sizeof(mt_record_dev_rwlock_t);
+		case event_ACCL_API_intr_handler_register: return sizeof(mt_record_dev_intr_t);
+		case event_ACCL_API_cpu_interrupt: return sizeof(mt_record_dev_intr_t);
+		case event_ACCL_ACTIVITY_kernel: return sizeof(mt_record_kernel_t);
+		case event_ACCL_API_UNKNOWN: return sizeof(record_activity_t);
 		case event_MPI_Send: return sizeof(record_comm_t);
 		case event_MPI_Recv: return sizeof(record_comm_t);
 		case event_MPI_Comm_rank: return sizeof(record_comm_rank_t);
@@ -42,6 +491,45 @@ size_t get_record_size(record_t* r) {
 		case event_Memory_Calloc: return sizeof(record_memory_calloc);
 		case event_Memory_Realloc: return sizeof(record_memory_realloc);
 		case event_Memory_Free: return sizeof(record_memory_free);
+		case event_Memory_Memalign: return sizeof(record_memory_memalign);
+		case event_Memory_Aligned_Alloc: return sizeof(record_memory_aligned_alloc);
+		case event_Memory_Posix_Memalign: return sizeof(record_memory_posix_memalign);
+		case event_OMPT_Thread_Begin: return sizeof(ext_record_ompt_thread_begin_t);
+		case event_OMPT_Thread_End: return sizeof(ext_record_ompt_thread_end_t);
+		case event_OMPT_Parallel_Begin: return sizeof(ext_record_ompt_parallel_begin_t);
+		case event_OMPT_Parallel_End: return sizeof(ext_record_ompt_parallel_end_t);
+		case event_OMPT_Work: return sizeof(ext_record_ompt_work_t);
+		case event_OMPT_Task_Create: return sizeof(ext_record_ompt_task_create_t);
+		case event_OMPT_Dependences: return sizeof(ext_record_ompt_dependences_t);
+		case event_OMPT_Task_Dependence: return sizeof(ext_record_ompt_task_dependence_t);
+		case event_OMPT_Task_Schedule: return sizeof(ext_record_ompt_task_schedule_t);
+		case event_OMPT_Master: return sizeof(ext_record_ompt_master_t);
+		case event_OMPT_Sync_Region: return sizeof(ext_record_ompt_sync_region_t);
+		case event_OMPT_Mutex_Acquire: return sizeof(ext_record_ompt_mutex_acquire_t);
+		case event_OMPT_Mutex_Acquired: return sizeof(ext_record_ompt_mutex_t);
+		case event_OMPT_Mutex_Released: return sizeof(ext_record_ompt_mutex_t);
+		case event_OMPT_Lock_Init: return sizeof(ext_record_ompt_mutex_acquire_t);
+		case event_OMPT_Lock_Destroy: return sizeof(ext_record_ompt_mutex_t);
+		case event_OMPT_Nest_Lock: return sizeof(ext_record_ompt_nest_lock_t);
+		case event_OMPT_Flush: return sizeof(ext_record_ompt_flush_t);
+		case event_OMPT_Cancel: return sizeof(ext_record_ompt_cancel_t);
+		case event_OMPT_Sync_Region_Wait: return sizeof(ext_record_ompt_sync_region_t);
+		case event_OMPT_Implicit_Task: return sizeof(ext_record_ompt_implicit_task_t);
+		case event_Pthread_Create: return sizeof(record_pthread_create_t);
+		case event_Pthread_Join: return sizeof(record_pthread_join_t);
+		case event_Pthread_Detach: return sizeof(record_pthread_detach_t);
+		case event_Pthread_Exit: return sizeof(record_pthread_exit_t);
+		case event_Pthread_Mutex_Init: return sizeof(record_pthread_mutex_init_t);
+		case event_Pthread_Mutex_Destroy: return sizeof(record_pthread_mutex_destroy_t);
+		case event_Pthread_Mutex_Lock: return sizeof(record_pthread_mutex_lock_t);
+		case event_Pthread_Mutex_Trylock: return sizeof(record_pthread_mutex_trylock_t);
+		case event_Pthread_Mutex_Unlock: return sizeof(record_pthread_mutex_unlock_t);
+		case event_Pthread_Cond_Init: return sizeof(record_pthread_cond_init_t);
+		case event_Pthread_Cond_Destroy: return sizeof(record_pthread_cond_destroy_t);
+		case event_Pthread_Cond_Wait: return sizeof(record_pthread_cond_wait_t);
+		case event_Pthread_Cond_Timedwait: return sizeof(record_pthread_cond_timedwait_t);
+		case event_Pthread_Cond_Signal: return sizeof(record_pthread_cond_signal_t);
+		case event_Pthread_Cond_Broadcast: return sizeof(record_pthread_cond_broadcast_t);
 
     }
     return sizeof(record_t);
@@ -56,33 +544,637 @@ std::string to_string(record_t* r) {
     ss << "Duration: "   << r->timestamps.exit - r->timestamps.enter << "\n";
     ss << "Record Size: "<< get_record_size(r) << "\n";
     switch(r->MsgType) {
-		case event_hipLaunchKernel:
+		case event_hipDeviceEnablePeerAccess:
+		case event_hipImportExternalMemory:
+		case event_hipFuncSetSharedMemConfig:
+		case event_hipDestroyExternalMemory:
+		case event_hipProfilerStop:
+		case event_hipMemsetD16:
+		case event_hipExtStreamGetCUMask:
+		case event_hipCtxSynchronize:
+		case event_hipSetDevice:
+		case event_hipCtxGetApiVersion:
+		case event_hipExtGetLinkTypeAndHopCount:
+		case event___hipPopCallConfiguration:
+		case event_hipModuleOccupancyMaxActiveBlocksPerMultiprocessor:
+		case event_hipMemset3D:
+		case event_hipDestroySurfaceObject:
+		case event_hipStreamCreateWithPriority:
+		case event_hipMemsetD8Async:
+		case event_hipCtxGetCacheConfig:
+		case event_hipDeviceGetStreamPriorityRange:
+		case event_hipModuleLoad:
+		case event_hipDrvPointerGetAttributes:
+		case event_hipDevicePrimaryCtxSetFlags:
+		case event_hipCtxGetCurrent:
+		case event_hipExternalMemoryGetMappedBuffer:
+		case event_hipDevicePrimaryCtxGetState:
+		case event_hipEventQuery:
+		case event_hipStreamWaitValue64:
+		case event_hipMemGetAddressRange:
+		case event_hipStreamWriteValue32:
+		case event_hipStreamAttachMemAsync:
+		case event_hipStreamGetFlags:
+		case event_hipCtxGetSharedMemConfig:
+		case event_hipDeviceDisablePeerAccess:
+		case event_hipModuleOccupancyMaxPotentialBlockSize:
+		case event_hipMemPtrGetInfo:
+		case event_hipFuncGetAttribute:
+		case event_hipCtxGetFlags:
+		case event_hipStreamDestroy:
+		case event___hipPushCallConfiguration:
+		case event_hipMemset3DAsync:
+		case event_hipDeviceGetPCIBusId:
+		case event_RESERVED_59:
+		case event_hipInit:
+		case event_hipStreamGetPriority:
+		case event_hipMemset2D:
+		case event_hipMemset2DAsync:
+		case event_hipDeviceCanAccessPeer:
+		case event_hipLaunchByPtr:
+		case event_hipCtxDestroy:
+		case event_hipMemsetD16Async:
+		case event_hipModuleUnload:
+		case event_hipHostUnregister:
+		case event_hipImportExternalSemaphore:
+		case event_hipExtStreamCreateWithCUMask:
+		case event_hipExtGetNearstCPU:
+		case event_hipDeviceSetCacheConfig:
+		case event_hipModuleGetGlobal:
+		case event_hipCtxCreate:
+		case event_hipIpcCloseMemHandle:
+		case event_hipDestroyExternalSemaphore:
+		case event_hipChooseDevice:
+		case event_hipDeviceSetSharedMemConfig:
+		case event_hipSetupArgument:
+		case event_hipIpcGetEventHandle:
+		case event_hipCtxSetCacheConfig:
+		case event_hipFuncSetCacheConfig:
+		case event_hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
+		case event_hipModuleGetTexRef:
+		case event_hipFuncSetAttribute:
+		case event_hipEventElapsedTime:
+		case event_hipConfigureCall:
+		case event_hipGetMipmappedArrayLevel:
+		case event_hipSignalExternalSemaphoresAsync:
+		case event_hipCtxPopCurrent:
+		case event_hipPointerGetAttribute:
+		case event_hipMemPrefetchAsync:
+		case event_hipGetSymbolAddress:
+		case event_hipHostGetFlags:
+		case event_hipCtxSetSharedMemConfig:
+		case event_hipMemGetInfo:
+		case event_hipDeviceReset:
+		case event_hipMemset:
+		case event_hipMemsetD8:
+		case event_hipHostRegister:
+		case event_hipDriverGetVersion:
+		case event_hipIpcOpenMemHandle:
+		case event_hipStreamWaitValue32:
+		case event_hipGetLastError:
+		case event_hipGetDeviceFlags:
+		case event_hipDeviceGetSharedMemConfig:
+		case event_hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
+		case event_hipSetDeviceFlags:
+		case event_hipOccupancyMaxPotentialBlockSize:
+		case event_hipDeviceGetAttribute:
+		case event_hipDeviceComputeCapability:
+		case event_hipWaitExternalSemaphoresAsync:
+		case event_hipCtxDisablePeerAccess:
+		case event_hipDeviceGetByPCIBusId:
+		case event_hipIpcGetMemHandle:
+		case event_hipCtxGetDevice:
+		case event_hipModuleLoadData:
+		case event_hipDevicePrimaryCtxRelease:
+		case event_hipOccupancyMaxActiveBlocksPerMultiprocessor:
+		case event_hipCtxSetCurrent:
+		case event_hipStreamCreate:
+		case event_hipDevicePrimaryCtxRetain:
+		case event_hipDeviceGet:
+		case event_hipStreamCreateWithFlags:
+		case event_hipFuncGetAttributes:
+		case event_hipGetSymbolSize:
+		case event_hipCreateSurfaceObject:
+		case event_hipMemAdvise:
+		case event_hipStreamQuery:
+		case event_hipStreamWriteValue64:
+		case event_hipPeekAtLastError:
+		case event_hipStreamAddCallback:
+		case event_hipMemsetD32:
+		case event_hipDeviceSynchronize:
+		case event_hipDeviceGetCacheConfig:
+		case event_hipMemRangeGetAttribute:
+		case event_hipPointerGetAttributes:
+		case event_hipMemsetAsync:
+		case event_hipDeviceGetName:
+		case event_hipModuleOccupancyMaxPotentialBlockSizeWithFlags:
+		case event_hipCtxPushCurrent:
+		case event_hipExtMallocManaged:
+		case event_hipProfilerStart:
+		case event_hipCtxEnablePeerAccess:
+		case event_hipDeviceGetLimit:
+		case event_hipModuleLoadDataEx:
+		case event_hipRuntimeGetVersion:
+		case event_hipDeviceGetP2PAttribute:
+		case event_hipGetDeviceProperties:
+		case event_hipDeviceTotalMem:
+		case event_hipHostGetDevicePointer:
+		case event_hipMemRangeGetAttributes:
+		case event_hipDevicePrimaryCtxReset:
+		case event_hipModuleGetFunction:
+		case event_hipMemsetD32Async:
+		case event_hipGetDevice:
+		case event_hipGetDeviceCount:
+		case event_hipIpcOpenEventHandle:
+		case event___hipPopCallConfiguration_internal:
+		case event___hipPushCallConfiguration_internal:
+		case event_hipDeviceGetDefaultMemPool:
+		case event_hipDeviceGetMemPool:
+		case event_hipDeviceGetUuid:
+		case event_hipDeviceSetMemPool:
+		case event_hipGLGetDevices:
+		case event_hipGetChannelDesc:
+		case event_hipGetErrorString:
+		case event_hipGraphAddChildGraphNode:
+		case event_hipGraphAddDependencies:
+		case event_hipGraphAddEmptyNode:
+		case event_hipGraphAddEventRecordNode:
+		case event_hipGraphAddEventWaitNode:
+		case event_hipGraphAddHostNode:
+		case event_hipGraphAddKernelNode:
+		case event_hipGraphAddMemcpyNode:
+		case event_hipGraphAddMemcpyNode1D:
+		case event_hipGraphAddMemcpyNodeFromSymbol:
+		case event_hipGraphAddMemcpyNodeToSymbol:
+		case event_hipGraphAddMemsetNode:
+		case event_hipGraphChildGraphNodeGetGraph:
+		case event_hipGraphClone:
+		case event_hipGraphCreate:
+		case event_hipGraphDestroy:
+		case event_hipGraphDestroyNode:
+		case event_hipGraphEventRecordNodeGetEvent:
+		case event_hipGraphEventRecordNodeSetEvent:
+		case event_hipGraphEventWaitNodeGetEvent:
+		case event_hipGraphEventWaitNodeSetEvent:
+		case event_hipGraphExecChildGraphNodeSetParams:
+		case event_hipGraphExecDestroy:
+		case event_hipGraphExecEventRecordNodeSetEvent:
+		case event_hipGraphExecEventWaitNodeSetEvent:
+		case event_hipGraphExecHostNodeSetParams:
+		case event_hipGraphExecKernelNodeSetParams:
+		case event_hipGraphExecMemcpyNodeSetParams:
+		case event_hipGraphExecMemcpyNodeSetParams1D:
+		case event_hipGraphExecMemcpyNodeSetParamsFromSymbol:
+		case event_hipGraphExecMemcpyNodeSetParamsToSymbol:
+		case event_hipGraphExecMemsetNodeSetParams:
+		case event_hipGraphExecUpdate:
+		case event_hipGraphGetEdges:
+		case event_hipGraphGetNodes:
+		case event_hipGraphGetRootNodes:
+		case event_hipGraphHostNodeGetParams:
+		case event_hipGraphHostNodeSetParams:
+		case event_hipGraphInstantiate:
+		case event_hipGraphInstantiateWithFlags:
+		case event_hipGraphKernelNodeGetAttribute:
+		case event_hipGraphKernelNodeGetParams:
+		case event_hipGraphKernelNodeSetAttribute:
+		case event_hipGraphKernelNodeSetParams:
+		case event_hipGraphLaunch:
+		case event_hipGraphMemcpyNodeGetParams:
+		case event_hipGraphMemcpyNodeSetParams:
+		case event_hipGraphMemcpyNodeSetParams1D:
+		case event_hipGraphMemcpyNodeSetParamsFromSymbol:
+		case event_hipGraphMemcpyNodeSetParamsToSymbol:
+		case event_hipGraphMemsetNodeGetParams:
+		case event_hipGraphMemsetNodeSetParams:
+		case event_hipGraphNodeFindInClone:
+		case event_hipGraphNodeGetDependencies:
+		case event_hipGraphNodeGetDependentNodes:
+		case event_hipGraphNodeGetType:
+		case event_hipGraphRemoveDependencies:
+		case event_hipGraphicsGLRegisterBuffer:
+		case event_hipGraphicsMapResources:
+		case event_hipGraphicsResourceGetMappedPointer:
+		case event_hipGraphicsUnmapResources:
+		case event_hipGraphicsUnregisterResource:
+		case event_hipMemAddressReserve:
+		case event_hipMemCreate:
+		case event_hipMemExportToShareableHandle:
+		case event_hipMemGetAccess:
+		case event_hipMemGetAllocationGranularity:
+		case event_hipMemGetAllocationPropertiesFromHandle:
+		case event_hipMemImportFromShareableHandle:
+		case event_hipMemMap:
+		case event_hipMemMapArrayAsync:
+		case event_hipMemPoolCreate:
+		case event_hipMemPoolDestroy:
+		case event_hipMemPoolExportPointer:
+		case event_hipMemPoolExportToShareableHandle:
+		case event_hipMemPoolGetAccess:
+		case event_hipMemPoolGetAttribute:
+		case event_hipMemPoolImportFromShareableHandle:
+		case event_hipMemPoolImportPointer:
+		case event_hipMemPoolSetAccess:
+		case event_hipMemPoolSetAttribute:
+		case event_hipMemPoolTrimTo:
+		case event_hipMemRelease:
+		case event_hipMemRetainAllocationHandle:
+		case event_hipMemSetAccess:
+		case event_hipMemUnmap:
+		case event_hipMipmappedArrayCreate:
+		case event_hipMipmappedArrayGetLevel:
+		case event_hipRegisterActivityCallback:
+		case event_hipRegisterApiCallback:
+		case event_hipRemoveActivityCallback:
+		case event_hipRemoveApiCallback:
+		case event_hipStreamBeginCapture:
+		case event_hipStreamEndCapture:
+		case event_hipStreamGetCaptureInfo:
+		case event_hipStreamGetCaptureInfo_v2:
+		case event_hipStreamIsCapturing:
+		case event_hipStreamUpdateCaptureDependencies:
+		case event_hipTexRefGetAddress:
+		case event_hipTexRefGetFlags:
+		case event_hipTexRefGetFormat:
+		case event_hipTexRefGetMaxAnisotropy:
+		case event_hipTexRefGetMipMappedArray:
+		case event_hipTexRefGetMipmapLevelBias:
+		case event_hipTexRefGetMipmapLevelClamp:
+		case event_hipTexRefSetAddress:
+		case event_hipTexRefSetAddress2D:
+		case event_hipTexRefSetArray:
+		case event_hipTexRefSetBorderColor:
+		case event_hipTexRefSetFlags:
+		case event_hipTexRefSetFormat:
+		case event_hipTexRefSetMaxAnisotropy:
+		case event_hipTexRefSetMipmapLevelBias:
+		case event_hipTexRefSetMipmapLevelClamp:
+		case event_hipTexRefSetMipmappedArray:
+		case event_hipGraphDebugDotPrint:
+		case event_hipGraphKernelNodeCopyAttributes:
+		case event_hipGraphNodeGetEnabled:
+		case event_hipGraphNodeSetEnabled:
+		case event_hipPointerSetAttribute:
+		case event_hipGraphAddMemAllocNode:
+		case event_hipGraphAddMemFreeNode:
+		case event_hipGraphMemAllocNodeGetParams:
+		case event_hipGraphMemFreeNodeGetParams:
+		case event_hipArray3DGetDescriptor:
+		case event_hipArrayGetDescriptor:
+		case event_hipArrayGetInfo:
+		case event_hipStreamGetDevice:
+		case event_hipDeviceGetGraphMemAttribute:
+		case event_hipDeviceGraphMemTrim:
+		case event_hipDeviceSetGraphMemAttribute:
+		case event_hipDeviceSetLimit:
+		case event_hipGraphAddExternalSemaphoresSignalNode:
+		case event_hipGraphAddExternalSemaphoresWaitNode:
+		case event_hipGraphExecExternalSemaphoresSignalNodeSetParams:
+		case event_hipGraphExecExternalSemaphoresWaitNodeSetParams:
+		case event_hipGraphExternalSemaphoresSignalNodeGetParams:
+		case event_hipGraphExternalSemaphoresSignalNodeSetParams:
+		case event_hipGraphExternalSemaphoresWaitNodeGetParams:
+		case event_hipGraphExternalSemaphoresWaitNodeSetParams:
+		case event_hipGraphReleaseUserObject:
+		case event_hipGraphRetainUserObject:
+		case event_hipGraphUpload:
+		case event_hipGraphicsGLRegisterImage:
+		case event_hipGraphicsSubResourceGetMappedArray:
+		case event_hipLaunchHostFunc:
+		case event_hipTexRefGetArray:
+		case event_hipTexRefGetBorderColor:
+		case event_hipTexRefGetMipmappedArray:
+		case event_hipThreadExchangeStreamCaptureMode:
+		case event_hipUserObjectCreate:
+		case event_hipUserObjectRelease:
+		case event_hipUserObjectRetain:
+		case event_hiprtcAddNameExpression:
+		case event_hiprtcCompileProgram:
+		case event_hiprtcCreateProgram:
+		case event_hiprtcCreateProgram_internal:
+		case event_hiprtcDestroyProgram:
+		case event_hiprtcGetBitcode:
+		case event_hiprtcGetBitcodeSize:
+		case event_hiprtcGetCode:
+		case event_hiprtcGetCodeSize:
+		case event_hiprtcGetLoweredName:
+		case event_hiprtcGetProgramLog:
+		case event_hiprtcGetProgramLogSize:
+		case event_hiprtcLinkAddData:
+		case event_hiprtcLinkAddFile:
+		case event_hiprtcLinkComplete:
+		case event_hiprtcLinkCreate:
+		case event_hiprtcLinkDestroy:
+		case event_hiprtcVersion:
+		case event_hipFuncGetModule:
+		case event_ACCL_USER_FUNC:
+		case event_ACCL_API_dev_owner:
+		case event_ACCL_API_group_get_status:
+		case event_ACCL_API_UNKNOWN:
 		{
-			record_activity_launch_t* rec = (record_activity_launch_t*)r;
+			record_activity_t* rec = (record_activity_t*)r;
 			ss << "Correlation ID:" << rec->correlation_id << "\n";
-			ss << ":" << rec->sharedMemBytes << "\n";
-			ss << ":" << rec->stream << "\n";
 			break;
 		}
+		case event_hipMallocPitch:
+		case event_hipMalloc:
+		case event_hipMalloc3DArray:
+		case event_hipArrayCreate:
+		case event_hipMallocArray:
+		case event_hipMallocMipmappedArray:
+		case event_hipHostMalloc:
+		case event_hipArray3DCreate:
+		case event_hipMallocManaged:
+		case event_hipMalloc3D:
+		case event_hipExtMallocWithFlags:
+		case event_hipMemAllocPitch:
+		case event_hipExtHostMalloc:
+		case event_hipHostAlloc:
+		case event_hipMallocAsync:
+		case event_hipMallocFromPoolAsync:
+		case event_hipMallocHost:
+		case event_hipMemAllocHost:
+		{
+			record_activity_mem_alloc_t* rec = (record_activity_mem_alloc_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "allocated memory address:" << rec->ptr << "\n";
+			ss << "allocated byte count:" << rec->sizeBytes << "\n";
+			ss << "location area of memory:" << rec->kind << "\n";
+			ss << "CPU core ID bounded:" << rec->cpu_id << "\n";
+			break;
+		}
+		case event_hipDrvMemcpy2DUnaligned:
+		case event_hipMemcpy2DToArray:
+		case event_hipMemcpyFromSymbol:
+		case event_hipMemcpyAtoH:
+		case event_hipMemcpyHtoD:
+		case event_hipMemcpyHtoA:
+		case event_hipMemcpy2D:
+		case event_hipDrvMemcpy3D:
+		case event_hipMemcpy2DFromArray:
+		case event_hipMemcpyDtoD:
+		case event_hipMemcpyFromArray:
+		case event_hipMemcpy3D:
+		case event_hipMemcpyToSymbol:
 		case event_hipMemcpy:
+		case event_hipMemcpyToArray:
+		case event_hipMemcpyPeer:
+		case event_hipMemcpyDtoH:
+		case event_hipMemcpyParam2D:
 		{
 			record_activity_memcpy_t* rec = (record_activity_memcpy_t*)r;
 			ss << "Correlation ID:" << rec->correlation_id << "\n";
-			ss << ":" << rec->dst << "\n";
-			ss << ":" << rec->src << "\n";
-			ss << ":" << rec->sizeBytes << "\n";
-			ss << ":" << rec->kind << "\n";
+			ss << "memory copy destination address:" << rec->dst << "\n";
+			ss << "memory copy source address:" << rec->src << "\n";
+			ss << "memory copy byte count:" << rec->sizeBytes << "\n";
+			ss << "direction of memory copy:" << rec->kind << "\n";
 			break;
 		}
+		case event_hipEventRecord:
+		case event_hipEventCreate:
+		case event_hipEventDestroy:
+		case event_hipEventCreateWithFlags:
+		{
+			record_activity_event_t* rec = (record_activity_event_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "HIP event pointer:" << rec->event << "\n";
+			ss << "stream running the workload:" << rec->stream << "\n";
+			break;
+		}
+		case event_hipMemcpyFromSymbolAsync:
+		case event_hipMemcpyToSymbolAsync:
 		case event_hipMemcpyAsync:
+		case event_hipMemcpy3DAsync:
+		case event_hipMemcpyParam2DAsync:
+		case event_hipMemcpyHtoDAsync:
+		case event_hipMemcpy2DAsync:
+		case event_hipMemcpy2DToArrayAsync:
+		case event_hipMemcpyDtoDAsync:
+		case event_hipMemcpyDtoHAsync:
+		case event_hipMemcpy2DFromArrayAsync:
+		case event_hipMemcpyPeerAsync:
+		case event_hipMemcpyWithStream:
+		case event_hipDrvMemcpy3DAsync:
 		{
 			record_activity_memcpy_async_t* rec = (record_activity_memcpy_async_t*)r;
 			ss << "Correlation ID:" << rec->correlation_id << "\n";
-			ss << ":" << rec->dst << "\n";
-			ss << ":" << rec->src << "\n";
-			ss << ":" << rec->sizeBytes << "\n";
-			ss << ":" << rec->kind << "\n";
-			ss << ":" << rec->stream << "\n";
+			ss << "memory copy destination address:" << rec->dst << "\n";
+			ss << "memory copy source address:" << rec->src << "\n";
+			ss << "memory copy byte count:" << rec->sizeBytes << "\n";
+			ss << "direction of memory copy:" << rec->kind << "\n";
+			ss << "stream running the workload:" << rec->stream << "\n";
+			break;
+		}
+		case event_hipStreamWaitEvent:
+		case event_hipStreamSynchronize:
+		case event_hipEventSynchronize:
+		{
+			record_activity_wait_t* rec = (record_activity_wait_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "HIP event pointer:" << rec->event << "\n";
+			ss << "stream running the workload:" << rec->stream << "\n";
+			break;
+		}
+		case event_hipArrayDestroy:
+		case event_hipFreeArray:
+		case event_hipFreeMipmappedArray:
+		case event_hipFree:
+		case event_hipHostFree:
+		case event_hipFreeAsync:
+		case event_hipFreeHost:
+		case event_hipMemAddressFree:
+		case event_hipMipmappedArrayDestroy:
+		{
+			record_activity_free_t* rec = (record_activity_free_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "allocated memory address:" << rec->ptr << "\n";
+			ss << "allocated byte count:" << rec->sizeBytes << "\n";
+			ss << "location area of memory:" << rec->kind << "\n";
+			ss << "stream running the workload:" << rec->stream << "\n";
+			break;
+		}
+		case event_hipLaunchCooperativeKernel:
+		case event_hipLaunchCooperativeKernelMultiDevice:
+		case event_hipLaunchKernel:
+		case event_hipHccModuleLaunchKernel:
+		case event_hipExtLaunchMultiKernelMultiDevice:
+		case event_hipExtModuleLaunchKernel:
+		case event_hipModuleLaunchKernel:
+		case event_hipExtLaunchKernel:
+		case event_hipLaunchKernel_internal:
+		{
+			record_activity_launch_t* rec = (record_activity_launch_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "shared memory used in bytes:" << rec->sharedMemBytes << "\n";
+			ss << "stream running the workload:" << rec->stream << "\n";
+			break;
+		}
+		case event_ACCL_API_group_create:
+		case event_ACCL_API_group_create_masked_launch:
+		case event_ACCL_API_group_create_launch:
+		case event_ACCL_API_group_exec:
+		case event_ACCL_API_group_destroy:
+		{
+			mt_record_kernel_launch_t* rec = (mt_record_kernel_launch_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Cluster ID of the thread group:" << rec->cluster_id << "\n";
+			ss << "Number of threads in the group:" << rec->thread_num << "\n";
+			ss << "ID of the dsp thread group:" << rec->group_id << "\n";
+			ss << "Bit mask of thread activated in the cluster:" << rec->thread_mask << "\n";
+			ss << "Number of scalar arguments for the kernel:" << rec->scalar_args_num << "\n";
+			ss << "Number of pointer arguments for the kernel:" << rec->ptr_args_num << "\n";
+			break;
+		}
+		case event_ACCL_API_group_wait:
+		{
+			mt_record_group_wait_t* rec = (mt_record_group_wait_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Thread group ID:" << rec->group_id << "\n";
+			break;
+		}
+		case event_ACCL_API_malloc:
+		case event_ACCL_API_vector_malloc:
+		case event_ACCL_API_scalar_malloc:
+		case event_ACCL_API_hbm_malloc:
+		{
+			mt_record_malloc_t* rec = (mt_record_malloc_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Cluster ID of the allocated memory:" << rec->cluster_id << "\n";
+			ss << "Bytes of memory allocated:" << rec->bytes << "\n";
+			ss << "Mode of memory allocated (read only / write only / read write / cache):" << rec->mode << "\n";
+			ss << "Memory kind (hardware location):" << rec->kind << "\n";
+			break;
+		}
+		case event_ACCL_API_free:
+		case event_ACCL_API_vector_free:
+		case event_ACCL_API_scalar_free:
+		case event_ACCL_API_hbm_free:
+		{
+			mt_record_free_t* rec = (mt_record_free_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Address to be freed:" << rec->address << "\n";
+			break;
+		}
+		case event_ACCL_API_vector_load:
+		case event_ACCL_API_vector_store:
+		case event_ACCL_API_scalar_load:
+		case event_ACCL_API_scalar_store:
+		{
+			mt_record_memcpy_t* rec = (mt_record_memcpy_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Bytes of data to be copied:" << rec->bytes << "\n";
+			ss << "Direction of memcpy:" << rec->kind << "\n";
+			break;
+		}
+		case event_ACCL_API_vector_load_async:
+		case event_ACCL_API_vector_store_async:
+		case event_ACCL_API_scalar_load_async:
+		case event_ACCL_API_scalar_store_async:
+		case event_ACCL_API_dma_p2p:
+		case event_ACCL_API_dma_broadcast:
+		case event_ACCL_API_dma_segment:
+		case event_ACCL_API_dma_sg:
+		{
+			mt_record_memcpy_async_t* rec = (mt_record_memcpy_async_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Source address of memcpy:" << rec->src << "\n";
+			ss << "Destination address of memcpy:" << rec->dst << "\n";
+			ss << "Bytes of data to be copied:" << rec->bytes << "\n";
+			ss << "Direction of memcpy:" << rec->kind << "\n";
+			ss << "DMA channel used for asynchronous memcpy:" << rec->dma_channel << "\n";
+			break;
+		}
+		case event_ACCL_API_dma_wait:
+		case event_ACCL_API_dma_wait_p2p:
+		case event_ACCL_API_dma_wait_sg:
+		{
+			mt_record_dma_wait_t* rec = (mt_record_dma_wait_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Cluster ID:" << rec->cluster_id << "\n";
+			ss << "DMA channel used for asynchronous memcpy:" << rec->dma_channel << "\n";
+			break;
+		}
+		case event_ACCL_API_dat_load:
+		case event_ACCL_API_dat_unload:
+		case event_ACCL_API_dev_close:
+		case event_ACCL_API_dev_open:
+		{
+			mt_record_driver_t* rec = (mt_record_driver_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Cluster ID of the thread group:" << rec->cluster_id << "\n";
+			ss << "0 for on, 1 for off:" << rec->kind << "\n";
+			break;
+		}
+		case event_ACCL_API_barrier_create:
+		case event_ACCL_API_barrier_destroy:
+		{
+			mt_record_barrier_t* rec = (mt_record_barrier_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Cluster ID of the thread group:" << rec->cluster_id << "\n";
+			ss << "ID of barrier unit:" << rec->barrier_id << "\n";
+			ss << "0 for on, 1 for off:" << rec->kind << "\n";
+			break;
+		}
+		case event_ACCL_API_rwlock_create:
+		case event_ACCL_API_rwlock_destroy:
+		{
+			mt_record_rwlock_t* rec = (mt_record_rwlock_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Cluster ID of the thread group:" << rec->cluster_id << "\n";
+			ss << "ID of rw lock unit:" << rec->lock_id << "\n";
+			ss << "0 for on, 1 for off:" << rec->kind << "\n";
+			break;
+		}
+		case event_ACCL_API_intr_send:
+		case event_ACCL_API_intr_reg:
+		{
+			mt_record_intr_t* rec = (mt_record_intr_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Thread group ID:" << rec->group_id << "\n";
+			ss << "Thread ID inside group:" << rec->thread_id << "\n";
+			ss << "Interrupt signal:" << rec->intr_id << "\n";
+			ss << "Interrupt handler function:" << rec->func << "\n";
+			break;
+		}
+		case event_ACCL_API_group_barrier:
+		case event_ACCL_API_core_barrier:
+		case event_ACCL_API_core_barrier_wait:
+		{
+			mt_record_dev_barrier_t* rec = (mt_record_dev_barrier_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "ID of barrier unit:" << rec->barrier_id << "\n";
+			ss << "Number of cores needed to pass the barrier:" << rec->core_num << "\n";
+			ss << "Timeout in clock cycles:" << rec->timeout << "\n";
+			break;
+		}
+		case event_ACCL_API_rwlock_try_rdlock:
+		case event_ACCL_API_rwlock_try_wrlock:
+		case event_ACCL_API_rwlock_rdlock:
+		case event_ACCL_API_rwlock_wrlock:
+		case event_ACCL_API_rwlock_unlock:
+		{
+			mt_record_dev_rwlock_t* rec = (mt_record_dev_rwlock_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "ID of rw lock:" << rec->lock_id << "\n";
+			ss << "0/1 for try on read/write lock, 2/3 for blocking try on read/write lock, 4 for unlock:" << rec->op_kind << "\n";
+			break;
+		}
+		case event_ACCL_API_intr_handler_register:
+		case event_ACCL_API_cpu_interrupt:
+		{
+			mt_record_dev_intr_t* rec = (mt_record_dev_intr_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "Interrupt signal:" << rec->intr_id << "\n";
+			ss << "Interrupt handler function:" << rec->func << "\n";
+			break;
+		}
+		case event_ACCL_ACTIVITY_kernel:
+		{
+			mt_record_kernel_t* rec = (mt_record_kernel_t*)r;
+			ss << "Correlation ID:" << rec->correlation_id << "\n";
+			ss << "API or Operation domain:" << rec->domain << "\n";
+			ss << "API kind or Kernel index (offset):" << rec->op << "\n";
+			ss << "Workload kind:" << rec->kind << "\n";
 			break;
 		}
 		case event_MPI_Send:
@@ -212,6 +1304,274 @@ std::string to_string(record_t* r) {
 		{
 			record_memory_free* rec = (record_memory_free*)r;
 			ss << "PTR:" << rec->ptr << "\n";
+			break;
+		}
+		case event_Memory_Memalign:
+		{
+			record_memory_memalign* rec = (record_memory_memalign*)r;
+			ss << "PTR:" << rec->ptr << "\n";
+			ss << "Alignment:" << rec->alignment << "\n";
+			ss << "Size:" << rec->size_bytes << "\n";
+			break;
+		}
+		case event_Memory_Aligned_Alloc:
+		{
+			record_memory_aligned_alloc* rec = (record_memory_aligned_alloc*)r;
+			ss << "PTR:" << rec->ptr << "\n";
+			ss << "Alignment:" << rec->alignment << "\n";
+			ss << "Size:" << rec->size_bytes << "\n";
+			break;
+		}
+		case event_Memory_Posix_Memalign:
+		{
+			record_memory_posix_memalign* rec = (record_memory_posix_memalign*)r;
+			ss << "PTR:" << rec->ptr << "\n";
+			ss << "Alignment:" << rec->alignment << "\n";
+			ss << "Size:" << rec->size_bytes << "\n";
+			ss << "Error Code:" << rec->error_code << "\n";
+			break;
+		}
+		case event_OMPT_Thread_Begin:
+		{
+			ext_record_ompt_thread_begin_t* rec = (ext_record_ompt_thread_begin_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Thread Type:" << rec->thread_type << "\n";
+			break;
+		}
+		case event_OMPT_Thread_End:
+		{
+			ext_record_ompt_thread_end_t* rec = (ext_record_ompt_thread_end_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_OMPT_Parallel_Begin:
+		{
+			ext_record_ompt_parallel_begin_t* rec = (ext_record_ompt_parallel_begin_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Encountering Task ID:" << rec->encountering_task_id << "\n";
+			ss << "Parallel ID:" << rec->parallel_id << "\n";
+			ss << "Flags:" << rec->flags << "\n";
+			break;
+		}
+		case event_OMPT_Parallel_End:
+		{
+			ext_record_ompt_parallel_end_t* rec = (ext_record_ompt_parallel_end_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Parallel ID:" << rec->parallel_id << "\n";
+			ss << "Encountering Task ID:" << rec->encountering_task_id << "\n";
+			ss << "Flags:" << rec->flags << "\n";
+			break;
+		}
+		case event_OMPT_Work:
+		{
+			ext_record_ompt_work_t* rec = (ext_record_ompt_work_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Work Type:" << rec->wstype << "\n";
+			ss << "Endpoint:" << rec->endpoint << "\n";
+			ss << "Parallel ID:" << rec->parallel_id << "\n";
+			ss << "Task ID:" << rec->task_id << "\n";
+			ss << "Count:" << rec->count << "\n";
+			break;
+		}
+		case event_OMPT_Task_Create:
+		{
+			ext_record_ompt_task_create_t* rec = (ext_record_ompt_task_create_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Encountering Task ID:" << rec->encountering_task_id << "\n";
+			ss << "New Task ID:" << rec->new_task_id << "\n";
+			ss << "Flags:" << rec->flags << "\n";
+			ss << "Has Dependences:" << rec->has_dependences << "\n";
+			break;
+		}
+		case event_OMPT_Dependences:
+		{
+			ext_record_ompt_dependences_t* rec = (ext_record_ompt_dependences_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Task ID:" << rec->task_id << "\n";
+			ss << "Dependence Variable:" << rec->dep_variable << "\n";
+			ss << "Dependence Type:" << rec->dep_type << "\n";
+			ss << "Number of Dependencies:" << rec->ndeps << "\n";
+			break;
+		}
+		case event_OMPT_Task_Dependence:
+		{
+			ext_record_ompt_task_dependence_t* rec = (ext_record_ompt_task_dependence_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Source Task ID:" << rec->src_task_id << "\n";
+			ss << "Sink Task ID:" << rec->sink_task_id << "\n";
+			break;
+		}
+		case event_OMPT_Task_Schedule:
+		{
+			ext_record_ompt_task_schedule_t* rec = (ext_record_ompt_task_schedule_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Prior Task ID:" << rec->prior_task_id << "\n";
+			ss << "Prior Task Status:" << rec->prior_task_status << "\n";
+			ss << "Next Task ID:" << rec->next_task_id << "\n";
+			break;
+		}
+		case event_OMPT_Master:
+		{
+			ext_record_ompt_master_t* rec = (ext_record_ompt_master_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Endpoint:" << rec->endpoint << "\n";
+			ss << "Parallel ID:" << rec->parallel_id << "\n";
+			ss << "Task ID:" << rec->task_id << "\n";
+			break;
+		}
+		case event_OMPT_Sync_Region:
+		case event_OMPT_Sync_Region_Wait:
+		{
+			ext_record_ompt_sync_region_t* rec = (ext_record_ompt_sync_region_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Sync Region Type:" << rec->kind << "\n";
+			ss << "Endpoint:" << rec->endpoint << "\n";
+			ss << "Parallel ID:" << rec->parallel_id << "\n";
+			ss << "Task ID:" << rec->task_id << "\n";
+			break;
+		}
+		case event_OMPT_Mutex_Acquire:
+		case event_OMPT_Lock_Init:
+		{
+			ext_record_ompt_mutex_acquire_t* rec = (ext_record_ompt_mutex_acquire_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Mutex Type:" << rec->kind << "\n";
+			ss << "Wait ID:" << rec->wait_id << "\n";
+			break;
+		}
+		case event_OMPT_Mutex_Acquired:
+		case event_OMPT_Mutex_Released:
+		case event_OMPT_Lock_Destroy:
+		{
+			ext_record_ompt_mutex_t* rec = (ext_record_ompt_mutex_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Mutex Type:" << rec->kind << "\n";
+			ss << "Wait ID:" << rec->wait_id << "\n";
+			break;
+		}
+		case event_OMPT_Nest_Lock:
+		{
+			ext_record_ompt_nest_lock_t* rec = (ext_record_ompt_nest_lock_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Endpoint:" << rec->endpoint << "\n";
+			ss << "Wait ID:" << rec->wait_id << "\n";
+			break;
+		}
+		case event_OMPT_Flush:
+		{
+			ext_record_ompt_flush_t* rec = (ext_record_ompt_flush_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_OMPT_Cancel:
+		{
+			ext_record_ompt_cancel_t* rec = (ext_record_ompt_cancel_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Task ID:" << rec->task_id << "\n";
+			ss << "Flags:" << rec->flags << "\n";
+			break;
+		}
+		case event_OMPT_Implicit_Task:
+		{
+			ext_record_ompt_implicit_task_t* rec = (ext_record_ompt_implicit_task_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			ss << "Endpoint:" << rec->endpoint << "\n";
+			ss << "Parallel ID:" << rec->parallel_id << "\n";
+			ss << "Task ID:" << rec->task_id << "\n";
+			ss << "Flags:" << rec->flags << "\n";
+			break;
+		}
+		case event_Pthread_Create:
+		{
+			record_pthread_create_t* rec = (record_pthread_create_t*)r;
+			ss << "THREAD:" << rec->thread << "\n";
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Join:
+		{
+			record_pthread_join_t* rec = (record_pthread_join_t*)r;
+			ss << "THREAD:" << rec->thread << "\n";
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Detach:
+		{
+			record_pthread_detach_t* rec = (record_pthread_detach_t*)r;
+			ss << "THREAD:" << rec->thread << "\n";
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Exit:
+		{
+			record_pthread_exit_t* rec = (record_pthread_exit_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Mutex_Init:
+		{
+			record_pthread_mutex_init_t* rec = (record_pthread_mutex_init_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Mutex_Destroy:
+		{
+			record_pthread_mutex_destroy_t* rec = (record_pthread_mutex_destroy_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Mutex_Lock:
+		{
+			record_pthread_mutex_lock_t* rec = (record_pthread_mutex_lock_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Mutex_Trylock:
+		{
+			record_pthread_mutex_trylock_t* rec = (record_pthread_mutex_trylock_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Mutex_Unlock:
+		{
+			record_pthread_mutex_unlock_t* rec = (record_pthread_mutex_unlock_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Cond_Init:
+		{
+			record_pthread_cond_init_t* rec = (record_pthread_cond_init_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Cond_Destroy:
+		{
+			record_pthread_cond_destroy_t* rec = (record_pthread_cond_destroy_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Cond_Wait:
+		{
+			record_pthread_cond_wait_t* rec = (record_pthread_cond_wait_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Cond_Timedwait:
+		{
+			record_pthread_cond_timedwait_t* rec = (record_pthread_cond_timedwait_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Cond_Signal:
+		{
+			record_pthread_cond_signal_t* rec = (record_pthread_cond_signal_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
+			break;
+		}
+		case event_Pthread_Cond_Broadcast:
+		{
+			record_pthread_cond_broadcast_t* rec = (record_pthread_cond_broadcast_t*)r;
+			ss << "Thread ID:" << rec->thread_id << "\n";
 			break;
 		}
 

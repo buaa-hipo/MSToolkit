@@ -22,22 +22,22 @@ void fn(N1::R1 r)
 {
     [](R1 r2) {
         auto source = std::source_location::current();
-        // spdlog::warn("source: {:d}", source.file_name());
-        spdlog::warn("source: {} ", source.function_name());
+        // // spdlog::warn("source: {:d}", source.file_name());
+        // spdlog::warn("source: {} ", source.function_name());
     }(R1());
     [](R2<1> r2) {
         auto source = std::source_location::current();
-        // spdlog::warn("source: {:d}", source.file_name());
-        spdlog::warn("source: {} ", source.function_name());
+        // // spdlog::warn("source: {:d}", source.file_name());
+        // spdlog::warn("source: {} ", source.function_name());
     }(R2<1>());
 }
 
 } // namespace N1
 int main()
 {
-    spdlog::info("raw type: {}", pse::utils::typesv<N1::R2<2>>);
-    spdlog::info("raw type: {}", pse::utils::typesv<int *>);
-    spdlog::info("raw type: {}", pse::utils::typesv<N1::R1>);
-    spdlog::info("enum str: {}", pse::utils::namesv<1>);
-    spdlog::info("enum str: {}", pse::utils::namesv<pse::ral::READ>);
+    // spdlog::info("raw type: {}", pse::utils::typesv<N1::R2<2>>);
+    // spdlog::info("raw type: {}", pse::utils::typesv<int *>);
+    // spdlog::info("raw type: {}", pse::utils::typesv<N1::R1>);
+    // spdlog::info("enum str: {}", pse::utils::namesv<1>);
+    // spdlog::info("enum str: {}", pse::utils::namesv<pse::ral::READ>);
 }

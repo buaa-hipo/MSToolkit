@@ -1,0 +1,79 @@
+##EXT Trace of MATRIX Device - Thread 24
+Event Name: ACCL_API_scalar_malloc
+Start Time: 15912798
+End Time: 17610514
+Duration: 1697716
+Record Size: 56
+Correlation ID:6
+Cluster ID of the allocated memory:1
+Bytes of memory allocated:80
+Memory kind (hardware location):4
+CYCLE : (3982293, 5920613, 1938320)
+BRTK : (108756, 164841, 56085)
+IACK : (55, 82, 27)
+Event Name: ACCL_API_scalar_load
+Start Time: 20175457
+End Time: 22047249
+Duration: 1871792
+Record Size: 72
+Correlation ID:7
+Bytes of data to be copied:80
+Direction of memcpy:1
+CYCLE : (8244492, 10363371, 2118879)
+BRTK : (232005, 295809, 63804)
+IACK : (111, 138, 27)
+Event Name: ACCL_API_scalar_malloc
+Start Time: 24378198
+End Time: 26058427
+Duration: 1680229
+Record Size: 56
+Correlation ID:8
+Cluster ID of the allocated memory:1
+Bytes of memory allocated:8
+Memory kind (hardware location):4
+CYCLE : (12447508, 14350026, 1902518)
+BRTK : (354036, 406249, 52213)
+IACK : (166, 193, 27)
+Event Name: ACCL_API_scalar_store
+Start Time: 28120834
+End Time: 29886273
+Duration: 1765439
+Record Size: 72
+Correlation ID:9
+Bytes of data to be copied:8
+Direction of memcpy:3
+CYCLE : (16197959, 18192284, 1994325)
+BRTK : (460754, 515787, 55033)
+IACK : (220, 247, 27)
+Event Name: ACCL_API_scalar_free
+Start Time: 31881388
+End Time: 33427992
+Duration: 1546604
+Record Size: 48
+Correlation ID:10
+Address to be freed:0x8
+CYCLE : (19950480, 21709028, 1758548)
+BRTK : (564893, 613619, 48726)
+IACK : (274, 301, 27)
+Event Name: ACCL_API_scalar_free
+Start Time: 35193132
+End Time: 36725790
+Duration: 1532658
+Record Size: 48
+Correlation ID:11
+Address to be freed:0x8
+CYCLE : (23254117, 25017905, 1763788)
+BRTK : (655195, 703891, 48696)
+IACK : (327, 354, 27)
+Event Name: ACCL_ACTIVITY_kernel
+Start Time: 13744752
+End Time: 38983435
+Duration: 25238683
+Record Size: 48
+Correlation ID:5
+API or Operation domain:1
+API kind or Kernel index (offset):0
+Workload kind:0
+CYCLE : (1829124, 27284861, 25455737)
+BRTK : (45708, 769269, 723561)
+IACK : (27, 383, 356)

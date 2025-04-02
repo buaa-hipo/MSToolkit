@@ -18,6 +18,9 @@ function usage () {
     echo "  --print_stg"
     echo "  --samp_dynscale"
     echo "  --collect_memory"
+    echo "  --accl"
+    echo "  --collect_omp"
+    echo "  --collect_pthread"
 }
 
 
@@ -35,9 +38,6 @@ fi
 
 ROOT=$(dirname "$0")
 WRAPPER=$ROOT/libmpi_wrapper.so
-if  [ -f $ROOT/libaccl_tracer.so ]; then
-  WRAPPER="$WRAPPER $ROOT/libaccl_tracer.so"
-fi
 
 if ${ENABLE_PRINT}; then
 echo $ROOT
@@ -141,12 +141,24 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --collect_memory)
-      if  [ -f $ROOT/libmemory_wrapper.so ]; then
-        WRAPPER="$WRAPPER $ROOT/libmemory_wrapper.so"
-      else
-        echo "Memory wrapper not found"
-        exit 1
+    #   if  [ -f $ROOT/libmemory_wrapper.so ]; then
+    #     WRAPPER="$WRAPPER $ROOT/libmemory_wrapper.so"
+    #   else
+    #     echo "Memory wrapper not found"
+    #     exit 1
+    #   fi
+      export JSI_ENABLE_MEMORY_COLLECT=ON
+      shift # past argument
+      ;;
+    --accl)
+      if  [ -f $ROOT/libaccl_tracer.so ]; then
+        WRAPPER="$WRAPPER $ROOT/libaccl_tracer.so"
       fi
+
+      if  [ -f $ROOT/libaccl_helper.so ]; then
+        WRAPPER="$WRAPPER $ROOT/libaccl_helper.so"
+      fi
+      export JSI_ENABLE_ACCL_COLLECT=ON
       shift # past argument
       ;;
     --enable_sample)
@@ -157,6 +169,31 @@ while [[ $# -gt 0 ]]; do
         echo "Sampling component not found"
         exit 1
       fi
+      shift # past argument
+      ;;
+    --collect_omp)
+      if  [ -f $ROOT/libopenmp_wrapper.so ]; then
+        if [ -z "$LLVMOpenMP_DIR" ]; then
+          echo "LLVMOpenMP_DIR is not set or is empty."
+          exit 1
+        else
+          echo "LLVMOpenMP_DIR is set to: $LLVMOpenMP_DIR" 
+          WRAPPER="${LLVMOpenMP_DIR}/lib/libomp.so $ROOT/libopenmp_wrapper.so $WRAPPER "
+        fi
+      else
+        echo "OpenMP wrapper not found"
+        exit 1
+      fi
+      shift # past argument
+      ;;
+    --collect_pthread)
+    #   if [ -f "$ROOT/libpthread_wrapper.so" ]; then
+    #     WRAPPER="$ROOT/libpthread_wrapper.so $WRAPPER"
+    #   else
+    #     echo "Pthread wrapper not found"
+    #     exit 1
+    #   fi
+      export JSI_ENABLE_PTHREAD_COLLECT=ON
       shift # past argument
       ;;
       
@@ -200,8 +237,13 @@ if ${ENABLE_PRINT}; then
     echo "Sample collecting enabled"
     echo "Sampling interval: $JSI_SAMPLING_INTERVAL"
   fi
+  if [[ ${JSI_ENABLE_ACCL_COLLECT+x} ]]; then
+    echo "Accl tracer enabled"
+  fi
 fi
 mkdir -p $MEASUREMENT_DIR
+
+WRAPPER="$WRAPPER $ROOT/../lib/libjsi_record.so"
 
 export LD_PRELOAD=$WRAPPER
 if ${ENABLE_PRINT}; then

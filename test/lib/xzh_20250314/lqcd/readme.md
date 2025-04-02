@@ -1,0 +1,1 @@
+尝试了mpich/4.0.2-mpi-x-gcc10.2.0可以编译，openmpi不行

@@ -5,7 +5,7 @@ SET(HEADER ${JSI_INCLUDE}/record/record_type.h ${JSI_INCLUDE}/record/record_read
 
 add_executable(alignment_test alignment_test.cpp alignment_bf.cpp alignment.cpp ${HEADER})
 target_compile_features(alignment_test PRIVATE cxx_std_17)
-target_include_directories(alignment_test PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS})
-target_link_libraries(alignment_test ${JSI_LIBRARY} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES})
+target_include_directories(alignment_test PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${LLVMOpenMP_INCLUDE_DIRS})
+target_link_libraries(alignment_test ${JSI_LIBRARY} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} ${LLVMOpenMP_LIBRARIES})
 
 install(TARGETS alignment_test DESTINATION bin)

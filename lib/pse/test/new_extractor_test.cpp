@@ -67,15 +67,15 @@ void read_test()
         auto desc = iter.desc();
         if (desc == 1)
         {
-            spdlog::info("r1.a: {}", static_cast<R1 *>(*iter)->a);
+            // spdlog::info("r1.a: {}", static_cast<R1 *>(*iter)->a);
         }
         else if (desc == 2)
         {
-            spdlog::info("r2.a: {}", static_cast<R2 *>(*iter)->a);
+            // spdlog::info("r2.a: {}", static_cast<R2 *>(*iter)->a);
         }
         else if (desc == 3)
         {
-            spdlog::info("r3.a: {}", static_cast<R3 *>(*iter)->a);
+            // spdlog::info("r3.a: {}", static_cast<R3 *>(*iter)->a);
         }
         ++extractor;
     }
@@ -84,5 +84,5 @@ int main()
 {
     write_test();
     read_test();
-    spdlog::info("pass");
+    // spdlog::info("pass");
 }

@@ -54,7 +54,7 @@ void read_test()
     auto root = backend.openRootSection();
     auto dir = root->openDirSection(1, true);
     auto data = dir->openDataSection<R1>(1, true, 0, 0);
-    spdlog::info("size={}", data->size());
+    // spdlog::info("size={}", data->size());
     int i = 0;
     for (auto iter = data->begin(); iter != data->end(); ++iter)
     {
@@ -100,13 +100,13 @@ void read_test2()
         auto res = data->read(buffer, string_offsets[i], 3);
         if (res != 6)
         {
-            spdlog::error("res={}", res);
+            // spdlog::error("res={}", res);
         }
         res = data->read(buffer, string_offsets[i], 1024);
         buffer[res] = '\0';
         if (strcmp(buffer, hello) != 0)
         {
-            spdlog::error("buffer={}", buffer);
+            // spdlog::error("buffer={}", buffer);
         }
     }
 }
@@ -143,7 +143,7 @@ void read_test3()
         buffer[res] = '\0';
         if (strcmp(buffer, hello) != 0)
         {
-            spdlog::error("buffer={}", buffer);
+            // spdlog::error("buffer={}", buffer);
         }
     }
 }
@@ -155,12 +155,12 @@ int main()
     read_test2();
     write_test3();
     read_test3();
-    spdlog::info("pass");
+    // spdlog::info("pass");
 
     record_t r;
     r.timestamps.enter = 1;
     PSE_GETFIELD(r, "timestamps.exit"sv) = 2;
     PSE_GETFIELD(r, std::string_view("timestamps.exit")) = 2;
     PSE_GETFIELD_V(r, std::string_view("timestamps.exit"));
-    spdlog::info("r.time: {}", r.timestamps.enter);
+    // spdlog::info("r.time: {}", r.timestamps.enter);
 }

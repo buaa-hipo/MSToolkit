@@ -6,40 +6,194 @@ TYPE record_activity_t : record_t
 END TYPE
 
 # Overwrite type defines
-FOR hipLaunchKernel
+FOR hipLaunchKernel,hipExtLaunchKernel,hipExtLaunchMultiKernelMultiDevice,hipLaunchCooperativeKernelMultiDevice,hipExtModuleLaunchKernel,hipHccModuleLaunchKernel,hipLaunchCooperativeKernel,hipLaunchKernel_internal,hipModuleLaunchKernel
 TYPE record_activity_launch_t : record_t
     uint64_t correlation_id : "Correlation ID"
     STRUCT blockNum : "{x},{y},{z}"
-        uint32_t x : NONE
-        uint32_t y : NONE
-        uint32_t z : NONE
+        uint32_t x : "first dimension of grid"
+        uint32_t y : "second dimension of grid"
+        uint32_t z : "third dimension of grid"
     END STRUCT
     STRUCT blockDim : "{x},{y},{z}"
-        uint32_t x : NONE
-        uint32_t y : NONE
-        uint32_t z : NONE
+        uint32_t x : "first dimension of block"
+        uint32_t y : "second dimension of block"
+        uint32_t z : "third dimension of block"
     END STRUCT
-    uint32_t sharedMemBytes : ""
-    const void* stream : ""
+    uint32_t sharedMemBytes : "shared memory used in bytes"
+    const void* stream : "stream running the workload"
 END TYPE
 
-FOR hipMemcpyAsync
+FOR hipMemcpyAsync,hipDrvMemcpy3DAsync,hipMemcpy2DAsync,hipMemcpy2DFromArrayAsync,hipMemcpy2DToArrayAsync,hipMemcpy3DAsync,hipMemcpyDtoDAsync,hipMemcpyDtoHAsync,hipMemcpyFromSymbolAsync,hipMemcpyHtoDAsync,hipMemcpyParam2DAsync,hipMemcpyPeerAsync,hipMemcpyToSymbolAsync,hipMemcpyWithStream
 TYPE record_activity_memcpy_async_t : record_t
     uint64_t correlation_id : "Correlation ID" 
-    const void* dst : ""
-    const void* src : ""
-    size_t sizeBytes : ""
-    uint32_t kind : ""
-    const void* stream : ""
+    const void* dst : "memory copy destination address"
+    const void* src : "memory copy source address"
+    size_t sizeBytes : "memory copy byte count"
+    uint32_t kind : "direction of memory copy"
+    const void* stream : "stream running the workload"
 END TYPE
 
-FOR hipMemcpy
+FOR hipMemcpy,hipDrvMemcpy2DUnaligned,hipDrvMemcpy3D,hipMemcpy2D,hipMemcpy2DFromArray,hipMemcpy2DToArray,hipMemcpy3D,hipMemcpyAtoH,hipMemcpyDtoD,hipMemcpyDtoH,hipMemcpyFromArray,hipMemcpyFromSymbol,hipMemcpyHtoA,hipMemcpyHtoD,hipMemcpyParam2D,hipMemcpyPeer,hipMemcpyToArray,hipMemcpyToSymbol
 TYPE record_activity_memcpy_t : record_t
     uint64_t correlation_id : "Correlation ID"
-    const void* dst : ""
-    const void* src : ""
-    size_t sizeBytes : ""
-    uint32_t kind : ""
+    const void* dst : "memory copy destination address"
+    const void* src : "memory copy source address"
+    size_t sizeBytes : "memory copy byte count"
+    uint32_t kind : "direction of memory copy"
+END TYPE
+
+FOR hipArray3DCreate,hipArrayCreate,hipExtHostMalloc,hipExtMallocWithFlags,hipHostAlloc,hipHostMalloc,hipMalloc,hipMalloc3D,hipMalloc3DArray,hipMallocArray,hipMallocAsync,hipMallocFromPoolAsync,hipMallocHost,hipMallocManaged,hipMallocMipmappedArray,hipMallocPitch,hipMemAllocHost,hipMemAllocPitch
+TYPE record_activity_mem_alloc_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void* ptr : "allocated memory address"
+    size_t sizeBytes : "allocated byte count"
+    uint32_t kind : "location area of memory"
+    int32_t cpu_id : "CPU core ID bounded"
+    const void *stream : "stream running the workload"
+END TYPE
+
+FOR hipArrayDestroy,hipMipmappedArrayDestroy,hipFree,hipFreeArray,hipFreeAsync,hipFreeHost,hipFreeMipmappedArray,hipHostFree,hipMemAddressFree
+TYPE record_activity_free_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void* ptr : "allocated memory address"
+    size_t sizeBytes : "allocated byte count"
+    uint32_t kind : "location area of memory"
+    const void* stream : "stream running the workload"
+END TYPE
+
+FOR hipEventSynchronize,hipStreamSynchronize,hipStreamWaitEvent
+TYPE record_activity_wait_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void* event : "HIP event pointer"
+    const void* stream : "stream running the workload"
+END TYPE
+
+FOR hipEventCreate,hipEventCreateWithFlags,hipEventDestroy,hipEventRecord
+TYPE record_activity_event_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void* event : "HIP event pointer"
+    const void* stream : "stream running the workload"
+END TYPE
+
+# MATRIX
+FOR ACCL_API_group_create,ACCL_API_group_create_masked_launch,ACCL_API_group_create_launch,ACCL_API_group_exec,ACCL_API_group_destroy
+TYPE mt_record_kernel_launch_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t cluster_id : "Cluster ID of the thread group"
+    uint32_t thread_num : "Number of threads in the group"
+    uint32_t group_id : "ID of the dsp thread group"
+    uint32_t thread_mask : "Bit mask of thread activated in the cluster"
+    uint32_t scalar_args_num : "Number of scalar arguments for the kernel"
+    uint32_t ptr_args_num : "Number of pointer arguments for the kernel"
+END TYPE
+
+FOR ACCL_API_dat_load,ACCL_API_dat_unload,ACCL_API_dev_open,ACCL_API_dev_close
+TYPE mt_record_driver_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t cluster_id : "Cluster ID of the thread group"
+    uint32_t kind : "0 for on, 1 for off"
+END TYPE
+
+FOR ACCL_API_barrier_create,ACCL_API_barrier_destroy
+TYPE mt_record_barrier_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t cluster_id : "Cluster ID of the thread group"
+    int32_t barrier_id : "ID of barrier unit"
+    uint32_t kind : "0 for on, 1 for off"
+END TYPE
+
+FOR ACCL_API_rwlock_create,ACCL_API_rwlock_destroy
+TYPE mt_record_rwlock_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t cluster_id : "Cluster ID of the thread group"
+    int32_t lock_id : "ID of rw lock unit"
+    uint32_t kind : "0 for on, 1 for off"
+END TYPE
+
+FOR ACCL_API_intr_send,ACCL_API_intr_reg
+TYPE mt_record_intr_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    uint32_t group_id : "Thread group ID"
+    uint32_t thread_id : "Thread ID inside group"
+    uint64_t intr_id : "Interrupt signal"
+    const void* func : "Interrupt handler function"
+END TYPE
+
+FOR ACCL_API_group_wait
+TYPE mt_record_group_wait_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t group_id : "Thread group ID"
+END TYPE
+
+FOR ACCL_API_vector_load,ACCL_API_vector_store,ACCL_API_scalar_load,ACCL_API_scalar_store
+TYPE mt_record_memcpy_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void *src : "Source address of memcpy"
+    const void *dst : "Destination address of memcpy"
+    uint64_t bytes : "Bytes of data to be copied"
+    uint32_t kind : "Direction of memcpy"
+END TYPE
+
+FOR ACCL_API_scalar_load_async, ACCL_API_scalar_store_async,ACCL_API_vector_load_async,ACCL_API_vector_store_async,ACCL_API_dma_p2p,ACCL_API_dma_broadcast,ACCL_API_dma_segment,ACCL_API_dma_sg
+TYPE mt_record_memcpy_async_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    const void* src : "Source address of memcpy"
+    const void* dst : "Destination address of memcpy"
+    uint64_t bytes : "Bytes of data to be copied"
+    uint32_t kind : "Direction of memcpy"
+    uint16_t dma_channel : "DMA channel used for asynchronous memcpy"
+END TYPE
+
+FOR ACCL_API_malloc,ACCL_API_vector_malloc,ACCL_API_scalar_malloc,ACCL_API_hbm_malloc
+TYPE mt_record_malloc_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t cluster_id : "Cluster ID of the allocated memory"
+    uint32_t bytes : "Bytes of memory allocated"
+    uint32_t mode : "Mode of memory allocated (read only / write only / read write / cache)"
+    uint32_t kind : "Memory kind (hardware location)"
+END TYPE
+
+FOR ACCL_API_free,ACCL_API_vector_free,ACCL_API_scalar_free,ACCL_API_hbm_free
+TYPE mt_record_free_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    void* address : "Address to be freed"
+END TYPE
+
+FOR ACCL_API_dma_wait,ACCL_API_dma_wait_p2p,ACCL_API_dma_wait_sg
+TYPE mt_record_dma_wait_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t cluster_id : "Cluster ID"
+    uint32_t dma_channel : "DMA channel used for asynchronous memcpy"
+END TYPE
+
+FOR ACCL_API_group_barrier,ACCL_API_core_barrier,ACCL_API_core_barrier_wait
+TYPE mt_record_dev_barrier_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    int32_t barrier_id : "ID of barrier unit"
+    uint32_t core_num : "Number of cores needed to pass the barrier"
+    uint64_t timeout : "Timeout in clock cycles"
+END TYPE
+
+FOR ACCL_API_rwlock_try_rdlock,ACCL_API_rwlock_try_wrlock,ACCL_API_rwlock_rdlock,ACCL_API_rwlock_wrlock,ACCL_API_rwlock_unlock
+TYPE mt_record_dev_rwlock_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    uint32_t lock_id : "ID of rw lock"
+    uint32_t op_kind : "0/1 for try on read/write lock, 2/3 for blocking try on read/write lock, 4 for unlock"
+END TYPE
+
+FOR ACCL_API_intr_handler_register,ACCL_API_cpu_interrupt
+TYPE mt_record_dev_intr_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    uint64_t intr_id : "Interrupt signal"
+    const void* func : "Interrupt handler function"
+END TYPE
+
+FOR ACCL_ACTIVITY_kernel
+TYPE mt_record_kernel_t : record_t
+    uint64_t correlation_id : "Correlation ID"
+    uint16_t domain : "API or Operation domain"
+    uint16_t op : "API kind or Kernel index (offset)"
+    uint32_t kind : "Workload kind"
 END TYPE
 
 # MPI
@@ -153,4 +307,287 @@ END TYPE
 FOR Memory_Free
 TYPE record_memory_free : record_t
     const void* ptr : "PTR"
+END TYPE
+
+FOR Memory_Memalign
+TYPE record_memory_memalign: record_t
+    const void* ptr : "PTR"
+    size_t alignment : "Alignment"
+    size_t size_bytes : "Size"
+END TYPE
+
+FOR Memory_Aligned_Alloc
+TYPE record_memory_aligned_alloc: record_t
+    const void* ptr : "PTR"
+    size_t alignment : "Alignment"
+    size_t size_bytes : "Size"
+END TYPE
+
+FOR Memory_Posix_Memalign
+TYPE record_memory_posix_memalign: record_t
+    const void* ptr : "PTR"
+    size_t alignment : "Alignment"
+    size_t size_bytes : "Size"
+    int error_code : "Error Code"
+END TYPE
+
+FOR OMPT_Thread_Begin
+TYPE ext_record_ompt_thread_begin_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_thread_t thread_type : "Thread Type"
+END TYPE
+
+FOR OMPT_Thread_End
+TYPE ext_record_ompt_thread_end_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR OMPT_Parallel_Begin
+TYPE ext_record_ompt_parallel_begin_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t encountering_task_id : "Encountering Task ID"
+    ompt_id_t parallel_id : "Parallel ID"
+    unsigned int requested_parallelism : "Requested Parallelism"
+    int flags : "Flags"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Parallel_End
+TYPE ext_record_ompt_parallel_end_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t parallel_id : "Parallel ID"
+    ompt_id_t encountering_task_id : "Encountering Task ID"
+    int flags : "Flags"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Work
+TYPE ext_record_ompt_work_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_work_t wstype : "Work Type"
+    ompt_scope_endpoint_t endpoint : "Endpoint"
+    ompt_id_t parallel_id : "Parallel ID"
+    ompt_id_t task_id : "Task ID"
+    uint64_t count : "Count"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Task_Create
+TYPE ext_record_ompt_task_create_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t encountering_task_id : "Encountering Task ID"
+    ompt_id_t new_task_id : "New Task ID"
+    int flags : "Flags"
+    int has_dependences : "Has Dependences"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Dependences
+TYPE ext_record_ompt_dependences_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t task_id : "Task ID"
+    uint64_t dep_variable : "Dependence Variable"
+    ompt_dependence_type_t  dep_type : "Dependence Type"
+    int ndeps : "Number of Dependencies"
+END TYPE
+
+FOR OMPT_Task_Dependence
+TYPE ext_record_ompt_task_dependence_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t src_task_id : "Source Task ID"
+    ompt_id_t sink_task_id : "Sink Task ID"
+END TYPE
+
+FOR OMPT_Task_Schedule
+TYPE ext_record_ompt_task_schedule_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t prior_task_id : "Prior Task ID"
+    ompt_task_status_t prior_task_status : "Prior Task Status"
+    ompt_id_t next_task_id : "Next Task ID"
+END TYPE
+
+FOR OMPT_Master
+TYPE ext_record_ompt_master_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_scope_endpoint_t endpoint : "Endpoint"
+    ompt_id_t parallel_id : "Parallel ID"
+    ompt_id_t task_id : "Task ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Sync_Region
+TYPE ext_record_ompt_sync_region_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_sync_region_t kind : "Sync Region Type"
+    ompt_scope_endpoint_t endpoint : "Endpoint"
+    ompt_id_t parallel_id : "Parallel ID"
+    ompt_id_t task_id : "Task ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Mutex_Acquire
+TYPE ext_record_ompt_mutex_acquire_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_mutex_t kind : "Mutex Type"
+    unsigned int hint : "Hint"
+    unsigned int impl : "Implementation"
+    ompt_wait_id_t wait_id : "Wait ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Mutex_Acquired
+TYPE ext_record_ompt_mutex_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_mutex_t kind : "Mutex Type"
+    ompt_wait_id_t wait_id : "Wait ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Mutex_Released
+TYPE ext_record_ompt_mutex_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_mutex_t kind : "Mutex Type"
+    ompt_wait_id_t wait_id : "Wait ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Lock_Init
+TYPE ext_record_ompt_mutex_acquire_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_mutex_t kind : "Mutex Type"
+    unsigned int hint : "Hint"
+    unsigned int impl : "Implementation"
+    ompt_wait_id_t wait_id : "Wait ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Lock_Destroy
+TYPE ext_record_ompt_mutex_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_mutex_t kind : "Mutex Type"
+    ompt_wait_id_t wait_id : "Wait ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Nest_Lock
+TYPE ext_record_ompt_nest_lock_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_scope_endpoint_t endpoint : "Endpoint"
+    ompt_wait_id_t wait_id : "Wait ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Flush
+TYPE ext_record_ompt_flush_t : record_t
+    uint64_t thread_id : "Thread ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Cancel
+TYPE ext_record_ompt_cancel_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_id_t task_id : "Task ID"
+    int flags : "Flags"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Sync_Region_Wait
+TYPE ext_record_ompt_sync_region_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_sync_region_t kind : "Sync Region Type"
+    ompt_scope_endpoint_t endpoint : "Endpoint"
+    ompt_id_t parallel_id : "Parallel ID"
+    ompt_id_t task_id : "Task ID"
+    const void *codeptr_ra : "Code Pointer"
+END TYPE
+
+FOR OMPT_Implicit_Task
+TYPE ext_record_ompt_implicit_task_t : record_t
+    uint64_t thread_id : "Thread ID"
+    ompt_scope_endpoint_t endpoint : "Endpoint"
+    ompt_id_t parallel_id : "Parallel ID"
+    ompt_id_t task_id : "Task ID"
+    unsigned int actual_parallelism : "Actual Parallelism"
+    unsigned int index : "Index"
+    int flags : "Flags"
+END TYPE
+
+FOR Pthread_Create
+TYPE record_pthread_create_t : record_t
+    pthread_t thread : "THREAD"
+    uint64_t thread_id : "Thread ID"
+    void *(*start_routine)(void *) : "THREAD FUNC"
+    void *arg : "ARG"
+END TYPE
+
+FOR Pthread_Join
+TYPE record_pthread_join_t : record_t
+    pthread_t thread : "THREAD"
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Detach
+TYPE record_pthread_detach_t : record_t
+    pthread_t thread : "THREAD"
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Exit
+TYPE record_pthread_exit_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Mutex_Init
+TYPE record_pthread_mutex_init_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Mutex_Destroy
+TYPE record_pthread_mutex_destroy_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Mutex_Lock
+TYPE record_pthread_mutex_lock_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Mutex_Trylock
+TYPE record_pthread_mutex_trylock_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Mutex_Unlock
+TYPE record_pthread_mutex_unlock_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Cond_Init
+TYPE record_pthread_cond_init_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Cond_Destroy
+TYPE record_pthread_cond_destroy_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Cond_Wait
+TYPE record_pthread_cond_wait_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Cond_Timedwait
+TYPE record_pthread_cond_timedwait_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Cond_Signal
+TYPE record_pthread_cond_signal_t : record_t
+    uint64_t thread_id : "Thread ID"
+END TYPE
+
+FOR Pthread_Cond_Broadcast
+TYPE record_pthread_cond_broadcast_t : record_t
+    uint64_t thread_id : "Thread ID"
 END TYPE

@@ -16,8 +16,8 @@ template <typename T>
 using TimeAccessor = utils::GetField<T,
                                      [] { return "time"sv; },
                                      [] { return "record.timestamps.enter"sv; },
-                                     [] { return "timestamps.enter"sv; }>;
-
-} // namespace ral
+                                     [] { return "timestamps.enter"sv; },
+                                     [] { return "record.callback_time"sv; }>;
+} // namespace ral`
 
 } // namespace pse

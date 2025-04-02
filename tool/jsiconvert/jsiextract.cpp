@@ -264,7 +264,7 @@ void load_events()
         auto sv = std::string_view(buffer);
         sv.remove_suffix(1);
         auto e = magic_enum::enum_cast<event>(sv);
-        spdlog::info("event enum has value {} with str {}", e.has_value(), buffer);
+        // spdlog::info("event enum has value {} with str {}", e.has_value(), buffer);
         events.insert(e.value());
     }
 }
@@ -301,8 +301,9 @@ void write_otf2(const std::string &output_file_dir,
     std::vector<int> appeared_msgType;
     std::vector<std::string> appeared_record_name;
 
-    for (auto &[id, trace] : traces)
+    for (auto &[str_id, trace] : traces)
     {
+        auto id = trace->rank();
         ids.push_back(id);
         event_num_map[i] = 0;
         OTF2_EvtWriter *writer = OTF2_Archive_GetEvtWriter(archive, i++);
@@ -340,11 +341,11 @@ void write_otf2(const std::string &output_file_dir,
                 break;
             }
 
-            auto backtrace = backtraces.at(id)->backtrace_get_context_string(record->ctxt);
+            auto backtrace = backtraces.at(str_id)->backtrace_get_context_string(record->ctxt);
             auto [iter, inserted] = backtrace2id.try_emplace(backtrace, backtrace2id.size());
             if (inserted)
             {
-                // spdlog::info("backtrace: {}", backtrace);
+                // // spdlog::info("backtrace: {}", backtrace);
                 OTF2_GlobalDefWriter_WriteString(global_def_writer, iter->second, backtrace);
             }
 
@@ -362,7 +363,7 @@ void write_otf2(const std::string &output_file_dir,
                 // appeared_record.push_back(record);
                 appeared_msgType.push_back(msgType);
                 appeared_record_name.push_back(RecordHelper::get_record_name(record));
-                auto backtrace_id = backtrace2id.at(backtraces.at(id)->backtrace_get_context_string(record->ctxt));
+                auto backtrace_id = backtrace2id.at(backtraces.at(str_id)->backtrace_get_context_string(record->ctxt));
 
                 OTF2_AttributeList *attr = OTF2_AttributeList_New();
                 OTF2_AttributeValue attr_value;
@@ -417,11 +418,11 @@ void write_otf2(const std::string &output_file_dir,
                 //     OTF2_EvtWriter_Enter(writer, NULL, record->timestamps.enter, msgType);
                 //     OTF2_EvtWriter_Leave(writer, NULL, record->timestamps.exit, msgType);
                 }
-                // spdlog::info("current_time exit: {}", record->timestamps.exit);
+                // // spdlog::info("current_time exit: {}", record->timestamps.exit);
             }
-            // spdlog::info("current_time: {}", current_time);
+            // // spdlog::info("current_time: {}", current_time);
 
-            auto backtrace_id = backtrace2id.at(backtraces.at(id)->backtrace_get_context_string(record->ctxt));
+            auto backtrace_id = backtrace2id.at(backtraces.at(str_id)->backtrace_get_context_string(record->ctxt));
             OTF2_AttributeList *attr = OTF2_AttributeList_New();
             OTF2_AttributeValue attr_value;
             attr_value.uint32 = backtrace_id;
@@ -550,7 +551,7 @@ void write_otf2(const std::string &output_file_dir,
 int main(int argc, char *argv[])
 {
     parse(argc, argv);
-    // spdlog::info("hello");
+    // // spdlog::info("hello");
     try
     {
         RecordReader reader(input_dir.c_str(), DATA_MODEL, dump_dir.empty() ? nullptr : dump_dir.c_str());

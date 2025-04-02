@@ -15,9 +15,9 @@ int main()
 {
     std::filesystem::remove("a.txt");
     std::filesystem::remove("a.txt.lock");
-    spdlog::set_pattern("[%Y-%m-%d %T][thread %t][%l]%v");
+    // spdlog::set_pattern("[%Y-%m-%d %T][thread %t][%l]%v");
     omp_set_num_threads(32);
-    // spdlog::set_level(spdlog::level::debug);
+    // // spdlog::set_level(// spdlog::level::debug);
     {
         for (int i = 0; i < DATA_LEN; ++i)
         {
@@ -38,7 +38,7 @@ int main()
             }
         }
     }
-    spdlog::info("write finish");
+    // spdlog::info("write finish");
     {
         // fsl::FileSectionLayerDriver driver("a.txt");
         fsl::BlockManager manager("a.txt", ral::READ);
@@ -50,7 +50,7 @@ int main()
             auto dataSection2 = manager.openDataSection(dataSection, 100, false);
             if (j % 100 == 0)
             {
-                spdlog::info("{}", j);
+                // spdlog::info("{}", j);
             }
             manager.readDataSection(dataSection2, 123, buf2, DATA_LEN);
             manager.readDataSection(dataSection2, 143, buf2, DATA_LEN);
@@ -58,5 +58,5 @@ int main()
         }
     }
 
-    spdlog::info("test passed");
+    // spdlog::info("test passed");
 }

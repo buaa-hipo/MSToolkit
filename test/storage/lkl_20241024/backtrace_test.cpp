@@ -61,9 +61,9 @@ int main()
     write_backtrace_test();
     read_backtrace_test();
     if (!has_error)
-    spdlog::info("pass");
+    // spdlog::info("pass");
     else
-    spdlog::error("failed");
+    // spdlog::error("failed");
     std::filesystem::remove("test.db");
     std::filesystem::remove("test.db.lock");
 }

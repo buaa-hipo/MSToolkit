@@ -1,0 +1,128 @@
+=== Event 1 ===
+Event Name: PROCESS_START
+Start Time: 25874285851643
+End Time: 25874285851643
+Duration: 0
+Record Size: 32
+PMU Event Counter 0(PAPI_TOT_CYC): (64570, 65138, 568)
+PMU Event Counter 1(PAPI_TOT_INS): (11711, 11955, 244)
+=== Event 2 ===
+Event Name: ACCL_API_malloc
+Start Time: 25874286580009
+End Time: 25874286583885
+Duration: 3876
+Record Size: 56
+Correlation ID:1
+Cluster ID of the allocated memory:0
+Bytes of memory allocated:8192
+Memory kind (hardware location):0
+Backtrace: 
+./daxpy.host_expand(+fef) (0x400fef):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (25712094, 26651795, 939701)
+PMU Event Counter 1(PAPI_TOT_INS): (52656388, 53022688, 366300)
+=== Event 3 ===
+Event Name: ACCL_API_malloc
+Start Time: 25874286647809
+End Time: 25874286651218
+Duration: 3409
+Record Size: 56
+Correlation ID:2
+Cluster ID of the allocated memory:0
+Bytes of memory allocated:8192
+Memory kind (hardware location):0
+Backtrace: 
+./daxpy.host_expand(+1007) (0x401007):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (26734814, 26800993, 66179)
+PMU Event Counter 1(PAPI_TOT_INS): (53034718, 53046434, 11716)
+=== Event 4 ===
+Event Name: ACCL_API_group_create_launch
+Start Time: 25874286665159
+End Time: 25874286681371
+Duration: 16212
+Record Size: 64
+Correlation ID:3
+Cluster ID of the thread group:0
+Number of threads in the group:2
+ID of the dsp thread group:0
+Bit mask of thread activated in the cluster:0
+Number of scalar arguments for the kernel:1
+Number of pointer arguments for the kernel:3
+Backtrace: 
+./daxpy.host_expand(+10cf) (0x4010cf):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (27039840, 27209047, 169207)
+PMU Event Counter 1(PAPI_TOT_INS): (53156036, 53185762, 29726)
+=== Event 5 ===
+Event Name: ACCL_API_group_wait
+Start Time: 25874286711620
+End Time: 25874288935455
+Duration: 2223835
+Record Size: 48
+Correlation ID:4
+Thread group ID:0
+Backtrace: 
+./daxpy.host_expand(+10df) (0x4010df):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (27631603, 37898251, 10266648)
+PMU Event Counter 1(PAPI_TOT_INS): (53228789, 55180903, 1952114)
+=== Event 6 ===
+Event Name: ACCL_API_group_destroy
+Start Time: 25874288993472
+End Time: 25874288995620
+Duration: 2148
+Record Size: 64
+Correlation ID:5
+Cluster ID of the thread group:-1
+Number of threads in the group:0
+ID of the dsp thread group:4294967295
+Bit mask of thread activated in the cluster:0
+Number of scalar arguments for the kernel:0
+Number of pointer arguments for the kernel:0
+Backtrace: 
+./daxpy.host_expand(+113b) (0x40113b):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (38420019, 38460378, 40359)
+PMU Event Counter 1(PAPI_TOT_INS): (55625188, 55642765, 17577)
+=== Event 7 ===
+Event Name: ACCL_API_free
+Start Time: 25874289005898
+End Time: 25874289008681
+Duration: 2783
+Record Size: 48
+Correlation ID:6
+Address to be freed:0xa86004000
+Backtrace: 
+./daxpy.host_expand(+1143) (0x401143):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (38512659, 38574813, 62154)
+PMU Event Counter 1(PAPI_TOT_INS): (55667114, 55687325, 20211)
+=== Event 8 ===
+Event Name: ACCL_API_free
+Start Time: 25874289013504
+End Time: 25874289016095
+Duration: 2591
+Record Size: 48
+Correlation ID:7
+Address to be freed:0xa86006000
+Backtrace: 
+./daxpy.host_expand(+114b) (0x40114b):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff8d13229f):__libc_start_main [??:??:0]
+./daxpy.host_expand(+14c3) (0x4014c3):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (38603658, 38635855, 32197)
+PMU Event Counter 1(PAPI_TOT_INS): (55695257, 55706527, 11270)
+=== Event 9 ===
+Event Name: PROCESS_EXIT
+Start Time: 25874335953625
+End Time: 25874335953625
+Duration: 0
+Record Size: 32
+PMU Event Counter 0(PAPI_TOT_CYC): (39353152, 39354073, 921)
+PMU Event Counter 1(PAPI_TOT_INS): (55826896, 55827189, 293)

@@ -34,14 +34,14 @@ void read_test()
     int i = 100;
     for (auto iter = root->begin(); iter != root->end(); ++iter)
     {
-        spdlog::info("iter desc: {}", iter.getDesc());
+        // spdlog::info("iter desc: {}", iter.getDesc());
         auto dir = iter.getDirSection();
         auto data = dir->openDataSection<R1>(1, false, 0, 0);
         R1 r1;
         data->read(&r1, 0);
         if (r1.a != i || i != iter.getDesc())
         {
-            spdlog::error("failed at cmp {}", i);
+            // spdlog::error("failed at cmp {}", i);
             exit(-1);
         }
         i++;

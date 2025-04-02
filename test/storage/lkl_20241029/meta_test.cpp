@@ -52,9 +52,9 @@ int main()
     write_meta_test();
     read_meta_test();
     if (!has_error)
-    spdlog::info("pass");
+    // spdlog::info("pass");
     else
-    spdlog::error("failed");
+    // spdlog::error("failed");
     std::filesystem::remove("test.db");
     std::filesystem::remove("test.db.lock");
 }

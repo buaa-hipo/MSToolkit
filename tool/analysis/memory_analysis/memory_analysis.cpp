@@ -2,8 +2,8 @@
 #include "record/record_meta.h"
 #include "instrument/backtrace.h"
 
-MemoryAnalyzer::MemoryAnalyzer(RecordTraceCollection& traces, BacktraceCollection *backtraces, RankMetaCollection& metas)
-    : traces(traces), backtraces(*backtraces), metas(metas){
+MemoryAnalyzer::MemoryAnalyzer(RecordTraceCollection& traces, BacktraceCollection *backtraces, RankMetaCollection& metas, std::string output_dir, bool pretty_print)
+    : traces(traces), backtraces(*backtraces), metas(metas), output_dir(output_dir), pretty_print(pretty_print){
     this->memory_usage_list = std::vector<memory_usage_item>();
 
     this->alloc_times = 0;
@@ -42,7 +42,7 @@ MetaDataMap::MetaValue_t* MemoryAnalyzer::get_meta_value(const char *section, co
     return nullptr;
 }
 
-bool MemoryAnalyzer::check_record_source(backtrace_context_t &ctx, BacktraceTree &bt_tree)
+bool MemoryAnalyzer::accept_record_source(backtrace_context_t &ctx, BacktraceTree &bt_tree)
 {
     bool result = true;
     std::vector<const char *> vec;
@@ -51,11 +51,11 @@ bool MemoryAnalyzer::check_record_source(backtrace_context_t &ctx, BacktraceTree
     // std::cout << *(vec.rbegin() + 1) << "re " << (strstr(*(vec.rbegin() + 1),"_start_main") == NULL) << std::endl;
     // std::cout << vec[1] << "re " << (strstr(vec[1],"_IO_file_doallocate") == NULL) << std::endl;
     // std::cout << *(vec.rbegin()) << "re " << (strstr(*(vec.rbegin()),"ld-linux-x86-64.so")== NULL) <<std::endl;
-    // 接受条件
+    // 拒绝 not found
     if(strstr(*(vec.rbegin() + 1),"_start_main") == NULL)
         result = false;
 
-    // 拒绝条件
+    // 拒绝 found
     if(strstr(vec[1],"_IO_file_doallocate") != NULL)
         result = false;
     if(strstr(*(vec.rbegin()),"ld-linux-x86-64.so") != NULL)
@@ -71,15 +71,17 @@ void MemoryAnalyzer::init_recordtrace(RecordTrace& rtrace,int rank)
 
     int i = 0;
     int count = 0;
+    int all_count = 0;
     for(auto it=rtrace.begin(), ie=rtrace.end(); it!=ie; it=it.next())
     {
         record_t* r = it.val();
         if(r->MsgType == event_Memory_Malloc || r->MsgType == event_Memory_Calloc || r->MsgType == event_Memory_Realloc || r->MsgType == event_Memory_Free)
         {
+            all_count += 1;
             auto ctx = (backtrace_context_t) r->ctxt;
             auto &bt_tree = *backtraces[rank];
 
-            if(!check_record_source(ctx,bt_tree))
+            if(!accept_record_source(ctx,bt_tree))
             {
                 continue;
             }
@@ -99,12 +101,24 @@ void MemoryAnalyzer::init_recordtrace(RecordTrace& rtrace,int rank)
             if(r->MsgType == event_Memory_Malloc)
             {
                 record_memory_malloc* rec = reinterpret_cast<record_memory_malloc*>(r);
+
+                //illegal check
+                if(ptr2size.find((uint64_t)rec->ptr) != ptr2size.end())
+                {
+                    // printf("ptr: %p has been allocated\n", rec->ptr);
+                    continue;
+                }
+                //illegal check end
+
+                // printf("malloc size: %lu ptr: %p\n", rec->size_bytes, rec->ptr);
                 alloc_times += 1;
 
+                // mem leak
                 ml.size = rec->size_bytes;
                 ml.ctxt = rec->record.ctxt;
                 ptr2size.insert(std::make_pair((uint64_t)rec->ptr, ml));
 
+                //mem usage
                 local_alloc_size += rec->size_bytes;
                 mu.alloc_size = local_alloc_size;
                 mu.free_size = local_free_size;
@@ -114,12 +128,24 @@ void MemoryAnalyzer::init_recordtrace(RecordTrace& rtrace,int rank)
             else if(r->MsgType == event_Memory_Calloc)
             {
                 record_memory_calloc* rec = reinterpret_cast<record_memory_calloc*>(r);
-                alloc_times += 1;
 
+                //illegal check
+                if(ptr2size.find((uint64_t)rec->ptr) != ptr2size.end())
+                {
+                    // printf("ptr: %p has been allocated\n", rec->ptr);
+                    continue;
+                }
+                //illegal check end
+
+                alloc_times += 1;
+                // printf("calloc size: %lu ptr: %p\n", rec->size_bytes, rec->ptr);
+
+                // mem leak
                 ml.size = rec->size_bytes;
                 ml.ctxt = rec->record.ctxt;
                 ptr2size.insert(std::make_pair((uint64_t)rec->ptr, ml));
 
+                //mem usage
                 local_alloc_size += rec->size_bytes;
                 mu.alloc_size = local_alloc_size;
                 mu.free_size = local_free_size;
@@ -129,33 +155,75 @@ void MemoryAnalyzer::init_recordtrace(RecordTrace& rtrace,int rank)
             else if(r->MsgType == event_Memory_Realloc)
             {
                 record_memory_realloc* rec = reinterpret_cast<record_memory_realloc*>(r);
-                alloc_times += 1;
-                free_times += 1;
-                old_size = ptr2size.find((uint64_t)rec->ptr)->second.size;
-                ptr2size.erase((uint64_t)rec->ptr);
+                // printf("realloc size: %lu ptr: %p newptr: %p\n", rec->size_bytes, rec->ptr, rec->newptr);
 
-                ml.size = rec->size_bytes;
-                ml.ctxt = rec->record.ctxt;
-                ptr2size.insert(std::make_pair((uint64_t)rec->newptr, ml));
+                //illegal check
+                if(rec->ptr != NULL && ptr2size.find((uint64_t)rec->ptr) == ptr2size.end())
+                {
+                    continue;
+                }
+                //illegal check end
 
-                local_alloc_size += rec->size_bytes;
-                local_free_size += old_size;
-                mu.alloc_size = local_alloc_size;
-                mu.free_size = local_free_size;
-                mu.timestamps = rec->record.timestamps;
-                memory_usage_list.push_back(mu);
+                if(rec->ptr == NULL)
+                {
+                    alloc_times += 1;
+
+                    //mem leak
+                    ml.size = rec->size_bytes;
+                    ml.ctxt = rec->record.ctxt;
+                    ptr2size.insert(std::make_pair((uint64_t)rec->newptr, ml));
+
+                    //mem usage
+                    local_alloc_size += rec->size_bytes;
+                    mu.alloc_size = local_alloc_size;
+                    mu.free_size = local_free_size;
+                    mu.timestamps = rec->record.timestamps;
+                    memory_usage_list.push_back(mu);
+                }
+                else
+                {
+                    alloc_times += 1;
+                    free_times += 1;
+                    old_size = ptr2size.find((uint64_t)rec->ptr)->second.size;
+                    ptr2size.erase((uint64_t)rec->ptr);
+
+                    // mem leak
+                    ml.size = rec->size_bytes;
+                    ml.ctxt = rec->record.ctxt;
+                    ptr2size.insert(std::make_pair((uint64_t)rec->newptr, ml));
+
+                    //mem usage
+                    local_alloc_size += rec->size_bytes;
+                    local_free_size += old_size;
+                    mu.alloc_size = local_alloc_size;
+                    mu.free_size = local_free_size;
+                    mu.timestamps = rec->record.timestamps;
+                    memory_usage_list.push_back(mu);
+                }
+
             }
             else if(r->MsgType == event_Memory_Free)
             {
                 record_memory_free* rec = reinterpret_cast<record_memory_free*>(r);
+                // printf("free ptr: %p\n", rec->ptr);
+                
+                //illegal check
+                if(rec->ptr == NULL)
+                {
+                    continue;
+                }
                 if(ptr2size.find((uint64_t)rec->ptr) == ptr2size.end())
                 {
                     continue;
                 }
+                //illegal check end
+
+                // mem leak
                 free_times += 1;
                 old_size = ptr2size.find((uint64_t)rec->ptr)->second.size;
                 ptr2size.erase((uint64_t)rec->ptr);
 
+                //mem usage
                 local_free_size += old_size;
                 mu.alloc_size = local_alloc_size;
                 mu.free_size = local_free_size;
@@ -169,54 +237,139 @@ void MemoryAnalyzer::init_recordtrace(RecordTrace& rtrace,int rank)
             }
         }
     }
-    analysis_usage(rank);
-    analysis_memory_leak(rank);
+
+    analysis_usage(rank,count);
+    analysis_memory_leak(rank,count);
 }
 
-void MemoryAnalyzer::analysis_usage(int rank)
+void MemoryAnalyzer::analysis_usage(int rank,int count)
 {
-    printf("Memory usage analysis:\n");
+    printf("\nMemory usage analysis:\n\n");
+    if(count == 0)
+    {
+        printf("    no memory usage info\n\n");
+        return;
+    }
+
+    std::string filename = output_dir + "/memory_usage" + ".csv";
+    printf("    output_dir: %s\n", output_dir.c_str());
+    printf("    memory_usage file: %s\n\n", filename.c_str());
+
     int i = 0;
     int64_t memory_total =  get_meta_value("MEMORY_INFO","memory_total",rank)->i64;
+
     printf("    memory_total: %ld Bytes\n", memory_total*1000);
-    for (auto mu : memory_usage_list)
+    auto mu = *(memory_usage_list.rbegin());
+    printf("    last alloc -- timestamps: %lu, alloc_size: %lu Bytes, free_size: %lu Bytes, memory_usage: %lu Bytes, usage_ratio: %lf\n\n", (mu.timestamps.enter+mu.timestamps.exit)/2, mu.alloc_size, mu.free_size, mu.alloc_size-mu.free_size, (mu.alloc_size-mu.free_size)*1.0/(memory_total*1000));
+
+    //write to file
+    std::ofstream ofs(filename, std::ios::trunc);
+    if (!ofs.is_open()) {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    ofs << "timestamp,alloc_size (Bytes),free_size (Bytes),memory_usage (Bytes),usage_ratio\n";
+
+    for (auto &mu : memory_usage_list)
     {
         i += 1;
-        printf("    timestamps: %lu, alloc_size: %lu, free_size: %lu, memory_usage: %lu, usage_ratio: %lf\n", (mu.timestamps.enter+mu.timestamps.exit)/2, mu.alloc_size, mu.free_size, mu.alloc_size-mu.free_size, (mu.alloc_size-mu.free_size)*1.0/(memory_total*1000));
+
+        uint64_t ts = (mu.timestamps.enter + mu.timestamps.exit) / 2;
+        uint64_t usage = mu.alloc_size - mu.free_size;
+        double ratio = (usage * 1.0) / (memory_total * 1000);
+
+        // printf("    timestamps: %lu, alloc_size: %lu, free_size: %lu, memory_usage: %lu, usage_ratio: %lf\n",
+        //        ts, mu.alloc_size, mu.free_size, usage, ratio);
+
+        ofs << ts << ","
+            << mu.alloc_size << ","
+            << mu.free_size << ","
+            << usage << ","
+            << ratio << "\n";
     }
-    printf("\n");
+
+    ofs.close();  // 关闭文件
 }
 
-void MemoryAnalyzer::analysis_memory_leak(int rank)
+void MemoryAnalyzer::analysis_memory_leak(int rank,int count)
 {
     printf("Memory leak analysis:\n\n");
+    if(count == 0)
+    {
+        printf("    no memory leak info\n\n");
+    }
+
+    std::string filename = output_dir + "/memory_leak" + ".txt";
+    printf("    output_dir: %s\n", output_dir.c_str());
+    printf("    memory_usage file: %s\n\n", filename.c_str());
+
+    std::ofstream ofs(filename, std::ios::trunc);
+    if(!ofs.is_open())
+    {
+        std::cerr << "Failed to open file for writing: " << filename << std::endl;
+        return;
+    }
+
+    ofs << "Memory leak analysis:\n\n";
+    if(count == 0)
+    {
+        ofs << "    no memory leak info\n\n";
+        ofs.close();
+        return;
+    }
 
     uint64_t leak_size = 0;
     int i = 0;
     int n = ptr2size.size();
     auto &bt_tree = *backtraces[rank];
     std::vector<const char *> vec;
+
     for (auto it : ptr2size)
     {
         i += 1;
         leak_size += it.second.size;
-        printf("leak %lu bytes in 1 block  %d of %d\n", it.second.size, i, n);
-        printf("    at context:\n");
+
+        if(pretty_print)
+        {
+            printf("leak %lu bytes in 1 block  %d of %d\n", it.second.size, i, n);
+            printf("    at context:\n");
+        }
+
+        ofs << "leak " << it.second.size 
+            << " bytes in 1 block  " << i << " of " << n << "\n"
+            << "    at context:\n";
+
         vec.clear();
         bt_tree.backtrace_get_context_string_vec(it.second.ctxt, -1, vec);
         for(auto it=vec.begin(); it!=vec.end(); it++)
         {
-            printf("        %s\n", *it);
+            if(pretty_print)
+                printf("        %s\n", *it);
+            ofs << "        " << *it << "\n";
         }
-        printf("\n");
+        if(pretty_print)
+            printf("\n");
+        ofs << "\n";
     }
+
 
     printf("LEAK SUMMARY:");
     printf("    in use at exit: %lu bytes in %d blocks\n", leak_size, n);
     if(memory_usage_list.size() == 0)
         printf("    no heap usage info\n");
     else
-        printf("    total heap usage: %lu allocs, %lu frees, %lu bytes allocated\n", alloc_times, free_times, memory_usage_list.rbegin()->alloc_size);
+        printf("    total heap usage: %lu allocs, %lu frees, %lu bytes allocated\n\n", alloc_times, free_times, memory_usage_list.rbegin()->alloc_size);
+
+
+    ofs << "LEAK SUMMARY:\n";
+    ofs << "    in use at exit: " << leak_size << " bytes in " << n << " blocks\n";
+    if(memory_usage_list.size() == 0)
+        ofs << "    no heap usage info\n";
+    else
+        ofs << "    total heap usage: " << alloc_times << " allocs, "
+            << free_times << " frees, "
+            << memory_usage_list.rbegin()->alloc_size << " bytes allocated\n";
 }
 
 
@@ -243,7 +396,7 @@ void MemoryAnalyzer::check_meta_info(int rank)
     printf("memory_total: %ld\n", get_meta_value("MEMORY_INFO","memory_total",rank)->i64);
     printf("memory_free: %ld\n", get_meta_value("MEMORY_INFO","memory_free",rank)->i64);
     printf("memory_available: %ld\n", get_meta_value("MEMORY_INFO","memory_available",rank)->i64);
-    printf("allocate_time: %d\n", get_meta_value("MEMORY_INFO_END","allocate_time",rank)->i32);
+    // printf("allocate_time: %d\n", get_meta_value("MEMORY_INFO_END","allocate_time",rank)->i32);
     printf("=========meta info end=========\n");
 
     // MetaDataMap::MetaValue_t *item;

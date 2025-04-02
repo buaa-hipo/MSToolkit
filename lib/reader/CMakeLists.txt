@@ -18,7 +18,7 @@ else()
 endif()
 
 target_compile_features(jsi_reader PRIVATE cxx_std_17)
-target_include_directories(jsi_reader PRIVATE ../../include ./ ${LIBUNWIND_INCLUDE_DIR} ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${MPI_INCLUDE_PATH})
-target_link_libraries(jsi_reader ${LIBUNWIND_LIBRARIES} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} dl rt OpenMP::OpenMP_CXX ${MPI_LIBRARIES} backtrace)
+target_include_directories(jsi_reader PRIVATE ../../include ./ ${LIBUNWIND_INCLUDE_DIR} ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${MPI_INCLUDE_PATH} ${LLVMOpenMP_INCLUDE_DIRS})
+target_link_libraries(jsi_reader ${LIBUNWIND_LIBRARIES} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} dl rt OpenMP::OpenMP_CXX ${MPI_LIBRARIES} ${LLVMOpenMP_LIBRARIES} backtrace)
 
 install(TARGETS jsi_reader DESTINATION lib)

@@ -1,0 +1,220 @@
+=== Event 1 ===
+Event Name: PROCESS_START
+Start Time: 35159487370894
+End Time: 35159487370894
+Duration: 0
+Record Size: 32
+PMU Event Counter 0(PAPI_TOT_CYC): (57671, 58616, 945)
+PMU Event Counter 1(PAPI_TOT_INS): (11939, 12183, 244)
+=== Event 2 ===
+Event Name: MPI_Init
+Start Time: 35159487399168
+End Time: 35159488257575
+Duration: 858407
+Record Size: 32
+Backtrace: 
+/root/xzh/JSI-Toolkit/install/bin/libmpi_wrapper.so(+8ae3f) (0xffff9b3efe3f):MPI_Init [??:??:0]
+./simple_mpi.host(+f07) (0x400f07):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (20766407, 20767784, 1377)
+PMU Event Counter 1(PAPI_TOT_INS): (16025930, 16026223, 293)
+=== Event 3 ===
+Event Name: MPI_Comm_rank
+Start Time: 35159488322354
+End Time: 35159488326089
+Duration: 3735
+Record Size: 44
+MPI Comm:4268216
+MPI Rank:1
+Backtrace: 
+/root/xzh/JSI-Toolkit/install/bin/libmpi_wrapper.so(+2e28f) (0xffff9b39328f):MPI_Comm_rank [??:??:0]
+./simple_mpi.host(+f13) (0x400f13):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (20952473, 20955483, 3010)
+PMU Event Counter 1(PAPI_TOT_INS): (16100580, 16100920, 340)
+=== Event 4 ===
+Event Name: MPI_Comm_size
+Start Time: 35159488334957
+End Time: 35159488334984
+Duration: 27
+Record Size: 32
+Backtrace: 
+/root/xzh/JSI-Toolkit/install/bin/libmpi_wrapper.so(+3f27f) (0xffff9b3a427f):MPI_Comm_size [??:??:0]
+./simple_mpi.host(+f1f) (0x400f1f):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (21116982, 21118672, 1690)
+PMU Event Counter 1(PAPI_TOT_INS): (16174383, 16174731, 348)
+=== Event 5 ===
+Event Name: ACCL_API_malloc
+Start Time: 35159489160294
+End Time: 35159489167233
+Duration: 6939
+Record Size: 56
+Correlation ID:1
+Cluster ID of the allocated memory:1
+Bytes of memory allocated:160
+Memory kind (hardware location):0
+Backtrace: 
+./simple_mpi.host(+f57) (0x400f57):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (45861509, 46365756, 504247)
+PMU Event Counter 1(PAPI_TOT_INS): (68023952, 68062896, 38944)
+=== Event 6 ===
+Event Name: ACCL_API_malloc
+Start Time: 35159489206918
+End Time: 35159489212752
+Duration: 5834
+Record Size: 56
+Correlation ID:2
+Cluster ID of the allocated memory:1
+Bytes of memory allocated:16
+Memory kind (hardware location):0
+Backtrace: 
+./simple_mpi.host(+f6b) (0x400f6b):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (46611246, 46760135, 148889)
+PMU Event Counter 1(PAPI_TOT_INS): (68070543, 68079522, 8979)
+=== Event 7 ===
+Event Name: ACCL_API_group_create
+Start Time: 35159489217868
+End Time: 35159489249101
+Duration: 31233
+Record Size: 64
+Correlation ID:3
+Cluster ID of the thread group:1
+Number of threads in the group:1
+ID of the dsp thread group:24
+Bit mask of thread activated in the cluster:0
+Number of scalar arguments for the kernel:0
+Number of pointer arguments for the kernel:0
+Backtrace: 
+./simple_mpi.host(+faf) (0x400faf):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (46810270, 47348451, 538181)
+PMU Event Counter 1(PAPI_TOT_INS): (68081253, 68106365, 25112)
+=== Event 8 ===
+Event Name: ACCL_API_group_wait
+Start Time: 35159489282141
+End Time: 35159489301306
+Duration: 19165
+Record Size: 48
+Correlation ID:4
+Thread group ID:24
+Backtrace: 
+./simple_mpi.host(+fb7) (0x400fb7):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (47773490, 48144170, 370680)
+PMU Event Counter 1(PAPI_TOT_INS): (68121816, 68136310, 14494)
+=== Event 9 ===
+Event Name: ACCL_API_group_exec
+Start Time: 35159489316557
+End Time: 35159489329810
+Duration: 13253
+Record Size: 64
+Correlation ID:5
+Cluster ID of the thread group:-1
+Number of threads in the group:0
+ID of the dsp thread group:24
+Bit mask of thread activated in the cluster:0
+Number of scalar arguments for the kernel:1
+Number of pointer arguments for the kernel:2
+Backtrace: 
+./simple_mpi.host(+ff7) (0x400ff7):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (48264503, 48522719, 258216)
+PMU Event Counter 1(PAPI_TOT_INS): (68144289, 68176430, 32141)
+=== Event 10 ===
+Event Name: ACCL_API_group_wait
+Start Time: 35159489341088
+End Time: 35159490464495
+Duration: 1123407
+Record Size: 48
+Correlation ID:6
+Thread group ID:24
+Backtrace: 
+./simple_mpi.host(+fff) (0x400fff):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (48626956, 52921733, 4294777)
+PMU Event Counter 1(PAPI_TOT_INS): (68184868, 68985104, 800236)
+=== Event 11 ===
+Event Name: MPI_Send
+Start Time: 35159490472181
+End Time: 35159490474573
+Duration: 2392
+Record Size: 64
+Data type:4268728
+Type Size:8
+Dest/Src:0
+Tag:0
+Count:1
+MPI Comm:4268216
+Backtrace: 
+/root/xzh/JSI-Toolkit/install/bin/libmpi_wrapper.so(+2ee13) (0xffff9b393e13):MPI_Send [??:??:0]
+./simple_mpi.host(+106b) (0x40106b):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (53083225, 53165457, 82232)
+PMU Event Counter 1(PAPI_TOT_INS): (69055827, 69064372, 8545)
+=== Event 12 ===
+Event Name: ACCL_API_free
+Start Time: 35159490475328
+End Time: 35159490476410
+Duration: 1082
+Record Size: 48
+Correlation ID:7
+Address to be freed:0xa86004000
+Backtrace: 
+./simple_mpi.host(+1073) (0x401073):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (53193780, 53299177, 105397)
+PMU Event Counter 1(PAPI_TOT_INS): (69069177, 69086540, 17363)
+=== Event 13 ===
+Event Name: ACCL_API_group_destroy
+Start Time: 35159490481308
+End Time: 35159490491447
+Duration: 10139
+Record Size: 64
+Correlation ID:8
+Cluster ID of the thread group:-1
+Number of threads in the group:0
+ID of the dsp thread group:4294967295
+Bit mask of thread activated in the cluster:0
+Number of scalar arguments for the kernel:0
+Number of pointer arguments for the kernel:0
+Backtrace: 
+./simple_mpi.host(+107b) (0x40107b):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (53321187, 53385786, 64599)
+PMU Event Counter 1(PAPI_TOT_INS): (69091384, 69105979, 14595)
+=== Event 14 ===
+Event Name: MPI_Finalize
+Start Time: 35159536189130
+End Time: 35159538990849
+Duration: 2801719
+Record Size: 32
+Backtrace: 
+/root/xzh/JSI-Toolkit/install/bin/libmpi_wrapper.so(+2de93) (0xffff9b392e93):MPI_Finalize [??:??:0]
+./simple_mpi.host(+108f) (0x40108f):(null) [??:??:0]
+/lib/aarch64-linux-gnu/libc.so.6(+2429f) (0xffff9a7b629f):__libc_start_main [??:??:0]
+./simple_mpi.host(+10ff) (0x4010ff):(null) [??:??:0]
+PMU Event Counter 0(PAPI_TOT_CYC): (53965794, 61052483, 7086689)
+PMU Event Counter 1(PAPI_TOT_INS): (69209129, 72128939, 2919810)
+=== Event 15 ===
+Event Name: PROCESS_EXIT
+Start Time: 35159539033313
+End Time: 35159539033313
+Duration: 0
+Record Size: 32
+PMU Event Counter 0(PAPI_TOT_CYC): (61456842, 61457449, 607)
+PMU Event Counter 1(PAPI_TOT_INS): (72213055, 72213348, 293)

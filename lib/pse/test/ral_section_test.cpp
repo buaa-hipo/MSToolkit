@@ -68,12 +68,12 @@ void read_test(auto secMap, Backend::BackendMode mode)
     auto data_section2 = dir1.openDataStatic<RecordEnum::R1>(false);
     if (data_section2.valid())
     {
-        spdlog::error("failed: data sec2 valid");
+        // spdlog::error("failed: data sec2 valid");
         exit(-1);
     }
     if (!data_section.valid())
     {
-        spdlog::error("failed: data sec invalid");
+        // spdlog::error("failed: data sec invalid");
         exit(-1);
     }
     for (int i = 0; i < len; ++i)
@@ -82,7 +82,7 @@ void read_test(auto secMap, Backend::BackendMode mode)
         data_section.readRecord(&r);
         if (r.a != i || r.b != i + 1 || r.time != i + 2)
         {
-            spdlog::error("failed at cmp {}", i);
+            // spdlog::error("failed at cmp {}", i);
             exit(-1);
         }
     }
@@ -96,5 +96,5 @@ int main()
     std::filesystem::remove("c.data");
     res = write_test(Backend::SQLITE);
     read_test(res, Backend::SQLITE);
-    spdlog::info("pass");
+    // spdlog::info("pass");
 }

@@ -28,7 +28,9 @@ enum
     GENERIC_TRACE_SEC_ID = pse::ral::INIT_STATIC_ID + 6,
     SAMPLING_TRACE_SEC_ID = pse::ral::INIT_STATIC_ID + 7,
     EXT_TRACE_SEC_ID = pse::ral::INIT_STATIC_ID + 8,
-
+    EXT_SEC_OFFSET = pse::ral::INIT_STATIC_ID + 9,
+    COMMON_USE_STRING_SEC = pse::ral::INIT_STATIC_ID + 10,
+    
     RECORD_SEC_OFFSET = pse::ral::INIT_STATIC_ID + 100000,
 };
 }

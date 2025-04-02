@@ -4,6 +4,10 @@ if (USE_CUDA)
     endif()
 endif()
 
+if (USE_MATRIX)
+    add_subdirectory(matrix)
+endif()
+
 if (USE_CUDA)
     add_subdirectory(cuda)
 endif()

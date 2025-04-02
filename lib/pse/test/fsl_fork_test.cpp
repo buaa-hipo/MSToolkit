@@ -14,8 +14,8 @@ char buf2[DATA_LEN];
 using namespace pse;
 int main()
 {
-    // spdlog::set_level(spdlog::level::debug);
-    spdlog::set_pattern("[%Y-%m-%d %T][thread %t][%l]%v");
+    // // spdlog::set_level(// spdlog::level::debug);
+    // spdlog::set_pattern("[%Y-%m-%d %T][thread %t][%l]%v");
 
     std::filesystem::remove("a.txt");
     std::filesystem::remove("a.txt.lock");
@@ -39,7 +39,7 @@ int main()
                     manager.writeDataSection(dataSection2, 123, buf1, DATA_LEN);
                     manager.writeDataSection(dataSection2, 143, buf1, DATA_LEN);
                 }
-                spdlog::info("write finish");
+                // spdlog::info("write finish");
                 {
                     // fsl::FileSectionLayerDriver driver("a.txt");
                     fsl::BlockManager manager("a.txt", ral::READ);
@@ -51,7 +51,7 @@ int main()
                 }
 
                 assert(strncmp(buf1, buf2, DATA_LEN) == 0);
-                spdlog::info("child test passed");
+                // spdlog::info("child test passed");
             }
             else
             {
@@ -68,7 +68,7 @@ int main()
                     manager.writeDataSection(dataSection2, 123, buf1, DATA_LEN);
                     manager.writeDataSection(dataSection2, 143, buf1, DATA_LEN);
                 }
-                spdlog::info("write finish");
+                // spdlog::info("write finish");
                 {
                     // fsl::FileSectionLayerDriver driver("a.txt");
                     fsl::BlockManager manager("a.txt", ral::READ);
@@ -80,7 +80,7 @@ int main()
                 }
 
                 assert(strncmp(buf1, buf2, DATA_LEN) == 0);
-                spdlog::info("test passed");
+                // spdlog::info("test passed");
                 waitpid(pid, nullptr, 0);
             }
         });

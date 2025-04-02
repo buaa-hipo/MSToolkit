@@ -19,7 +19,7 @@ template <typename ValueType, typename Range, typename Func>
 auto parallel_transform(Range &&range, Func func)
 {
     // using ValueType = std::decay_t<decltype(*std::begin(range))>;
-    spdlog::info("ranges::distance(range): {}", ranges::distance(range));
+    // spdlog::info("ranges::distance(range): {}", ranges::distance(range));
     std::vector<ValueType> results(ranges::distance(range));
 
     auto first = ranges::begin(range);
@@ -29,9 +29,9 @@ auto parallel_transform(Range &&range, Func func)
     // Determine the number of available hardware threads
     auto num_threads = std::thread::hardware_concurrency();
     // print num_threads
-    spdlog::info("num_threads: {}", num_threads);
+    // spdlog::info("num_threads: {}", num_threads);
     auto part_size = ranges::distance(range) / num_threads;
-    spdlog::info("part_size: {}", part_size);
+    // spdlog::info("part_size: {}", part_size);
 
     std::vector<std::future<void>> futures;
     for (unsigned i = 0; i < num_threads; ++i)

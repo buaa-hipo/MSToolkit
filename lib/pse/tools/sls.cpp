@@ -64,10 +64,10 @@ int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
-        spdlog::error("Usage: {} <filename> <section>", argv[0]);
+        // spdlog::error("Usage: {} <filename> <section>", argv[0]);
         return 1;
     }
-    spdlog::set_level(spdlog::level::info);
+    // spdlog::set_level(// spdlog::level::info);
 
     auto backend = pse::fsl::RawSectionBackend(argv[1], pse::ral::RWMode::READ);
     auto wrapper = pse::ral::BackendWrapper(std::move(backend));
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            spdlog::error("Invalid section type");
+            // spdlog::error("Invalid section type");
             return 1;
         }
     }
@@ -100,22 +100,22 @@ int main(int argc, char *argv[])
     {
         for (auto iter = parent->begin(); iter != parent->end(); ++iter)
         {
-            spdlog::info("[desc]: {}, [isa dir]: {}", iter.getDesc(), iter.isa(pse::ral::SectionBase::DIR));
+            // spdlog::info("[desc]: {}, [isa dir]: {}", iter.getDesc(), iter.isa(pse::ral::SectionBase::DIR));
         }
     }
     else if (dataSec)
     {
-        spdlog::info("sec size: {}", dataSec->size() * sizeof(Dummy));
+        // spdlog::info("sec size: {}", dataSec->size() * sizeof(Dummy));
     }
 }
 // int main(int argc, char *argv[])
 // {
 //     if (argc != 3)
 //     {
-//         spdlog::error("Usage: {} <filename> <section>", argv[0]);
+//         // spdlog::error("Usage: {} <filename> <section>", argv[0]);
 //         return 1;
 //     }
-//     spdlog::set_level(spdlog::level::debug);
+//     // spdlog::set_level(// spdlog::level::debug);
 //     BlockManager bm(argv[1], pse::ral::READ);
 //     auto parent = bm.openRootSection();
 //     string path = argv[2];
@@ -139,15 +139,15 @@ int main(int argc, char *argv[])
 //             {
 //                 break;
 //             }
-//             spdlog::info("[desc, id]: {} {}", id.desc, id.blockId);
+//             // spdlog::info("[desc, id]: {} {}", id.desc, id.blockId);
 //         }
 //     }
 //     else
 //     {
-//         spdlog::info("sec size: {}", dataSec->sectionSize);
+//         // spdlog::info("sec size: {}", dataSec->sectionSize);
 //         for (auto id : dataSec->direct)
 //         {
-//             spdlog::info("[id]: {}", id);
+//             // spdlog::info("[id]: {}", id);
 //         }
 //     }
 // }

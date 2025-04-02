@@ -25,11 +25,21 @@ For convenience, you can build and install the dependencies via spack:
 ```
 git clone https://github.com/spack/spack.git
 . ./spack/share/spack/setup-env.sh
-spack install dyninst papi libunwind otf2
+spack install dyninst libunwind otf2
 spack install boost@1.86.0 sqlite@3.40.1 range-v3@0.12.0 fmt@10.2.1 spdlog@1.14.1 magic-enum@0.9.6
-spack load dyninst papi libunwind otf2
+spack load dyninst libunwind otf2
 spack load boost@1.86.0 sqlite@3.40.1 range-v3@0.12.0 fmt@10.2.1 spdlog@1.14.1 magic-enum@0.9.6
 cd ..
+```
+
+If original PAPI is enough, you can build and install PAPI via spack:
+```
+spack install papi
+spack load papi
+```
+Otherwise use your custom version of PAPI and let JSI-Toolkit know its location:
+```
+export PAPI_PATH=<path-to-papi>
 ```
 
 #### Install of libdwarf
@@ -44,6 +54,7 @@ cd build
 make -j 
 make install
 export PKG_CONFIG_PATH=<path-to-libdwarf>/lib/pkgconfig:$PKG_CONFIG_PATH
+export CMAKE_PREFIX_PATH=<path-to-libdwarf>:$CMAKE_PREFIX_PATH
 ```
 
 ### Build & Install

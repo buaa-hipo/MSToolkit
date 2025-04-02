@@ -23,7 +23,7 @@ set(HEADER ${JSI_INCLUDE}/instrument/backtrace.h ${JSI_INCLUDE}/record/record_ty
 add_library(mpi_wrapper SHARED mpi_instrument.h ${CMAKE_CURRENT_BINARY_DIR}/mpi_wrapper.cpp ${HEADER})
 target_compile_features(mpi_wrapper PRIVATE cxx_std_17)
 
-target_include_directories(mpi_wrapper PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${MPI_INCLUDE_PATH})
-target_link_libraries(mpi_wrapper ${JSI_TRACELIB} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} ${MPI_LIBRARIES})
+target_include_directories(mpi_wrapper PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${MPI_INCLUDE_PATH} ${LLVMOpenMP_INCLUDE_DIRS})
+target_link_libraries(mpi_wrapper ${JSI_TRACELIB} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} ${MPI_LIBRARIES} ${LLVMOpenMP_LIBRARIES})
 
 install(TARGETS mpi_wrapper DESTINATION bin)

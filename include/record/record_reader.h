@@ -2,16 +2,21 @@
 #define __JSI_RECORD_READER_H__
 
 
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
+#include "instrument/backtrace.h"
 #include "record/record_defines.h"
 #include "record/record_meta.h"
 #include "record/record_type.h"
+#include "record_defines.h"
 #include "utils/jsi_log.h"
 #include "ral/section.h"
 #include "ral/extractor.h"
 #include "record/record_utils.h"
+
+#include "instrument/backtrace.h"
 
 // Helper functions
 #include "record/accl_helper.h"
@@ -99,6 +104,15 @@ struct RecordHelper {
                 break;
             case event_Memory_Realloc:
                 size = sizeof(record_memory_realloc);
+                break;
+            case event_Memory_Memalign:
+                size = sizeof(record_memory_memalign);
+                break;
+            case event_Memory_Aligned_Alloc:
+                size = sizeof(record_memory_aligned_alloc);
+                break;
+            case event_Memory_Posix_Memalign:
+                size = sizeof(record_memory_posix_memalign);
                 break;
             default:
                 if(JSI_MSG_IS_ACCL_API(r->MsgType)) {
@@ -243,13 +257,13 @@ struct RecordHelper {
     // Special care for common type
     static inline __attribute__((always_inline))
     uint64_t *counters(record_t* r) {
-        return reinterpret_cast<uint64_t *>(reinterpret_cast<char*>(r) + get_record_size(r));
+        return reinterpret_cast<uint64_t *>(reinterpret_cast<char*>(r) + record_utils::get_record_size(r));
     }
 
     // Infer the size of record at runtime using the MsgType field
     static inline __attribute__((always_inline))
     uint64_t *counters_runtime_inferred(record_t *r) {
-        return (uint64_t *) ((char *) r + get_record_size(r));
+        return (uint64_t *) ((char *) r + record_utils::get_record_size(r));
     }
 
     static inline __attribute__((always_inline))
@@ -403,6 +417,87 @@ struct RecordHelper {
     }
 };
 
+class ExtRecordTrace {
+private:
+    int _rank;
+    std::unique_ptr<pse::ral::DirSectionInterface> _dir;
+    std::unordered_map<uint64_t, std::unique_ptr<pse::ral::StreamSectionInterface>> _secs;
+public:
+    ExtRecordTrace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, int _rank) : _dir(std::move(dir)), _rank(_rank) {
+        for (auto iter = _dir->begin(); iter != _dir->end(); ++iter) {
+            if (iter.getDesc() >= StaticSectionDesc::EXT_SEC_OFFSET)
+            {
+                auto sec = iter.getStreamSection();
+                if (sec)
+                {
+                    _secs[iter.getDesc()-StaticSectionDesc::EXT_SEC_OFFSET] = std::move(sec);
+                }
+            }
+        }
+    }
+
+    class Iterator {
+        private:
+        uint32_t _cur_size = -1;
+        std::unique_ptr<pse::ral::StreamSectionInterface>& _stream;
+        size_t _cur;
+        std::vector<char> buffer;
+    public:
+        Iterator(std::unique_ptr<pse::ral::StreamSectionInterface>& stream, size_t cur) : _stream(stream) ,_cur(cur) {
+        }
+
+        bool operator==(const Iterator& other) const {
+            return _cur == other._cur;
+        }
+
+        bool operator!=(const Iterator& other) const {
+            return !(*this == other);
+        }
+
+        void* get()
+        {
+            if (_cur_size == -1)
+            {
+                _stream->read(&_cur_size, _cur, 4);
+                buffer.resize(_cur_size);
+                _stream->read(buffer.data(), _cur + 4, _cur_size);
+                _cur = _cur + 4 + _cur_size;
+            }
+            return buffer.data();
+        }
+        size_t record_size() const {
+            return _cur_size;
+        }
+
+        Iterator& operator++() {
+            _cur_size = -1;
+            return *this;
+        }
+
+        Iterator operator++(int) {
+            auto tmp = *this;
+            ++(*this);
+            return tmp;
+        }
+
+
+    };
+
+    Iterator begin(int i) 
+    {
+        return Iterator(_secs.at(i), 0);
+    }
+    Iterator end(int i) 
+    {
+        return Iterator(_secs.at(i), _secs.at(i)->size());
+    }
+
+    bool exist(int id) {
+        return _secs.contains(id);
+    }
+
+    int rank() const {return _rank;}
+};
 
 class RecordTrace {
 private:
@@ -651,6 +746,8 @@ public:
      */
     bool zoom(uint64_t ts_s, uint64_t ts_e, uint64_t offset);
 
+    int rank() const {return _rank;}
+
     /* filter out all events with MsgType and return the filtered trace */
     // RecordTrace *filter(int MsgType);
 };
@@ -728,19 +825,24 @@ using RecordTraceIterator = RecordTrace::RecordTraceIterator;
 using RecordTraceExtIterator = RecordTraceExt::Iterator;
 using jsi::toolkit::BacktraceTree;
 /* Collection of MPI & Function Traces */
-typedef std::unordered_map<int, RecordTrace *> RecordTraceCollection;
+typedef std::unordered_map<std::string, RecordTrace *> RecordTraceCollection;
 typedef std::unordered_map<int, RecordMeta *> RankMetaCollection;
-typedef std::unordered_map<int, BacktraceTree *> BacktraceCollection;
-typedef std::unordered_map<int, RecordTraceExt *> RecordTraceExtCollection;
+typedef std::unordered_map<std::string, BacktraceTree *> BacktraceCollection;
+typedef std::unordered_map<std::string, RecordTraceExt *> RecordTraceExtCollection;
+typedef std::unordered_map<std::string, ExtRecordTrace *> ExtRecordTraceCollection;
+typedef std::unordered_map<std::string, pse::ral::StringSectionInterface*> StringSectionCollection;
 
 class RecordReader {
 protected:
     int _model;
     bool _mpi_only;
     RecordTraceCollection _record_collection;
+    RecordTraceCollection _sampling_record_collection;
     RankMetaCollection _meta_collection;
     BacktraceCollection _backtrace_collection;
     RecordTraceExtCollection _record_ext_collection;
+    ExtRecordTraceCollection _ext_record_collection;
+    StringSectionCollection _string_section_collection;
 
     std::unordered_map<std::string, int> _id2rank{};
     std::unordered_map<int, std::vector<std::string>> _pmu_event_list_collection{};
@@ -751,7 +853,7 @@ protected:
     // void _load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir);
 
     void _load_backtrace(const char *fn, int rank, const char* dwarf_dir, bool enable_dbinfo);
-    void _load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, int rank, const char* dwarf_dir, bool enable_dbinfo);
+    void _load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& str_id, const char* dwarf_dir, bool enable_dbinfo, int rank);
 
     RecordReader(int _model) : _model(_model) {}
 
@@ -767,21 +869,24 @@ public:
     void load_meta(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& node_id);
 
     void load_backtrace(const char* path, const char* dwarf_dir, bool enable_dbinfo);
-    void load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& node_id, const char* dwarf_dir, bool enable_dbinfo);
+    void load_backtrace(std::unique_ptr<pse::ral::DirSectionInterface>& dir, const std::string& node_id, const char* dwarf_dir, bool enable_dbinfo, uint64_t pid);
     void load_trace(const char* path);
-    void load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, const std::string& node_id);
+    void load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, const std::string& node_id, uint64_t pid);
     void load_etr(const char* path);
 
 
-    RecordTrace &get_trace(int rank);
+    RecordTrace &get_trace(const std::string& rank);
 
     RecordTraceCollection &get_all_traces();
+    RecordTraceCollection &get_all_sampling_traces() { return _sampling_record_collection;}
+    ExtRecordTraceCollection &get_all_etraces() { return _ext_record_collection;}
+    StringSectionCollection &get_all_string_sections() { return _string_section_collection; }
 
     RecordMeta &get_meta_map(int rank);
 
     RankMetaCollection &get_all_meta_maps();
 
-    BacktraceTree &get_backtrace(int rank);
+    BacktraceTree &get_backtrace(const std::string& rank);
 
     BacktraceCollection &get_all_backtraces();
 
@@ -801,6 +906,60 @@ public:
     ParallelRecordReaderUnordered(const char *dir,int _model, const char* dwarf_dir = nullptr, bool enable_dbinfo = true)
          : RecordReader(_model) { load(dir, dwarf_dir, enable_dbinfo); }
     virtual void load(const char *dir, const char* dwarf_dir, bool enable_dbinfo);
+};
+
+class AcclRecordTrace {
+private:
+    const int16_t dev_pmu_num_;
+    size_t trace_size_;
+    const char *dev_type_;
+    const char *dev_pmu_list_;
+    void *trace_;
+    pse::ral::StringSectionInterface *string_section_;
+public:
+    AcclRecordTrace(void *trace, int dev_pmu_num, size_t trace_size, const char *dev_pmu_list, const char *dev_type, pse::ral::StringSectionInterface* string_section)
+        : dev_pmu_num_(dev_pmu_num), trace_(trace), trace_size_(trace_size), dev_pmu_list_(dev_pmu_list), dev_type_(dev_type), string_section_(string_section) {}
+    AcclRecordTrace(AcclRecordTrace&) = delete;
+    AcclRecordTrace(AcclRecordTrace&&) = delete;
+    class Iterator {
+    private:
+        // size_t pos_;
+        const char *type_;
+        const int16_t record_pmu_num_;
+        void *cur_;
+        pse::ral::StringSectionInterface *str_sec_;
+    public:
+        Iterator(void *addr, int num, const char *type, pse::ral::StringSectionInterface* str_sec): cur_(addr), record_pmu_num_(num), type_(type), str_sec_(str_sec) {}
+        bool operator==(const Iterator& other) const {
+            return cur_ == other.cur_;
+        }
+
+        bool operator!=(const Iterator& other) const {
+            return !(*this == other);
+        }
+
+        size_t record_size() const;
+
+        Iterator& operator++() {
+            cur_ = static_cast<char*>(cur_) + record_size() + 2 * record_pmu_num_ * sizeof(uint64_t);
+            return *this;
+        }
+
+        void* get() const {
+            return cur_;
+        }
+
+        std::string to_string();
+    };
+
+    Iterator begin() { return Iterator(trace_, dev_pmu_num_, dev_type_, string_section_); }
+    Iterator end() { return Iterator(static_cast<char*>(trace_) + trace_size_, dev_pmu_num_, dev_type_, string_section_); }
+
+    const char* get_trace_type() const {
+        return dev_type_;
+    }
+
+    std::string to_string();
 };
 
 #endif

@@ -10,6 +10,8 @@
 #include "record/record_writer.h"
 #include "jsi_sampling.h"
 
+#include "instrument/backtrace.h"
+
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -17,6 +19,8 @@
 #include <sys/time.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include "utils/safe.hpp"
 
 #ifdef ENABLE_PMU
 #define ENABLE_WRITER

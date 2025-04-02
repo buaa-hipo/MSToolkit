@@ -320,6 +320,12 @@ private:
     size_t off = 0;
 
 public:
+    size_t read(void *buf, size_t _off, size_t len)
+    {
+        auto self = static_cast<StreamSectionImpl_t *>(this);
+        auto res = self->read(buf, _off, len);
+        return res;
+    }
     size_t read(void *buf, size_t len)
     {
         auto self = static_cast<StreamSectionImpl_t *>(this);
@@ -447,6 +453,7 @@ public:
 class StreamSectionInterface
 {
 public:
+    virtual size_t read(void *buf, size_t off, size_t len) = 0;
     virtual size_t read(void *buf, size_t len) = 0;
 
     virtual size_t write(const void *buf, size_t len) = 0;
@@ -589,7 +596,7 @@ class DataSectionWrapper : public DataSectionInterface
     unsigned int _record_size;
     size_t cur;
     char* buffer;
-    static constexpr size_t BUFFER_RECORD_NUM = 1;
+    static constexpr size_t BUFFER_RECORD_NUM = 1024;
 
 public:
     DataSectionWrapper(T &&sec, unsigned int record_size)
@@ -707,6 +714,11 @@ public:
     {
         auto &_sec_mixin = static_cast<StreamSectionMixin<T> &>(_sec);
         return _sec_mixin.read(buf, len);
+    }
+    virtual size_t read(void *buf, size_t off, size_t len) override
+    {
+        auto &_sec_mixin = static_cast<StreamSectionMixin<T> &>(_sec);
+        return _sec_mixin.read(buf, off, len);
     }
     virtual off_t tell() override
     {

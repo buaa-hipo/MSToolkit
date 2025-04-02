@@ -47,27 +47,27 @@ void read_test()
         data->read(&r1, i);
         if (r1.a != i)
         {
-            spdlog::error("failed at test1: r1.a {} != {}", r1.a, i);
+            // spdlog::error("failed at test1: r1.a {} != {}", r1.a, i);
             has_error = 1;
         }
         if (r1.b != i+1)
         {
-            spdlog::error("failed at test1: r1.b {} != {}", r1.b, i+1);
+            // spdlog::error("failed at test1: r1.b {} != {}", r1.b, i+1);
             has_error = 1;
         }
         if (r1.time != i+2)
         {
-            spdlog::error("failed at test1: r1.time {} != {}", r1.time, i+2);
+            // spdlog::error("failed at test1: r1.time {} != {}", r1.time, i+2);
             has_error = 1;
         }
         if (r2.pmu[0] != i+3)
         {
-            spdlog::error("failed at test1: r2.pmu[0] {} != {}", r2.pmu[0], i+3);
+            // spdlog::error("failed at test1: r2.pmu[0] {} != {}", r2.pmu[0], i+3);
             has_error = 1;
         }
         if (r2.pmu[1] != i+4)
         {
-            spdlog::error("failed at test1: r2.pmu[1] {} != {}", r2.pmu[1], i+4);
+            // spdlog::error("failed at test1: r2.pmu[1] {} != {}", r2.pmu[1], i+4);
             has_error = 1;
         }
     }
@@ -105,14 +105,14 @@ void read_test2()
         auto res = data->read(buffer, string_offsets[i], 3);
         if (res != 6)
         {
-            spdlog::error("res={}", res);
+            // spdlog::error("res={}", res);
             has_error = 1;
         }
         res = data->read(buffer, string_offsets[i], 1024);
         buffer[res] = '\0';
         if (strcmp(buffer, hello) != 0)
         {
-            spdlog::error("buffer={}", buffer);
+            // spdlog::error("buffer={}", buffer);
             has_error = 1;
         }
     }
@@ -150,7 +150,7 @@ void read_test3()
         buffer[res] = '\0';
         if (strcmp(buffer, hello) != 0)
         {
-            spdlog::error("buffer={}", buffer);
+            // spdlog::error("buffer={}", buffer);
             has_error = 1;
         }
     }
@@ -164,9 +164,9 @@ int main()
     write_test3();
     read_test3();
     if (!has_error)
-    spdlog::info("pass");
+    // spdlog::info("pass");
     else
-    spdlog::error("failed");
+    // spdlog::error("failed");
     std::filesystem::remove("test.db");
     std::filesystem::remove("test.db.lock");
 }

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(JSIToolkit)
 
 option(USE_ROCM                "Enable ROCM tracing & profiling"                OFF)
+option(USE_MATRIX              "Enable MATRIX tracing & profiling"              OFF)
 option(USE_LIBUNWIND           "Enable Libunwind backtracing"                   ON)
 option(USE_ALLOCA              "Enable GNU C extension alloca"                  ON)
 
@@ -12,10 +13,12 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
+set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined -fsanitize=leak ${CMAKE_CXX_FLAGS_DEBUG} -Wall")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++20")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -gdwarf-4")
 try_compile(HAS_FS "${CMAKE_BINARY_DIR}/temp" 
 "${CMAKE_SOURCE_DIR}/cmake/tests/has_filesystem.cc" 
             CMAKE_FLAGS -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON
@@ -92,6 +95,7 @@ find_package (LibElf REQUIRED)
 find_package (LibDwarf REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Boost REQUIRED)
+find_package(LLVMOpenMP REQUIRED)
 
 set(ENV{PKG_CONFIG_PATH} $prefix)
 find_package(PkgConfig)
@@ -100,6 +104,7 @@ pkg_search_module(sqlite REQUIRED sqlite3)
 include_directories(${sqlite_INCLUDE_DIRS})
 link_directories(${sqlite_LIBRARY_DIRS})
 
+add_definitions(-DFMT_HEADER_ONLY)
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
@@ -119,6 +124,18 @@ if (USE_ROCM)
 endif ()
 
 include_directories(./lib/pse/include/)
+
+# find_package(fmt CONFIG REQUIRED)
+# get_target_property(fmt_INCLUDE_DIRS fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+# message(INFO "fmt_INCLUDE_DIRS: ${fmt_INCLUDE_DIRS}")
+# link_libraries(fmt::fmt)
+# include_directories(${fmt_INCLUDE_DIRS})
+
+# find_package(spdlog CONFIG REQUIRED)
+# link_libraries(spdlog::spdlog)
+# get_target_property(spdlog_INCLUDE_DIRS spdlog::spdlog INTERFACE_INCLUDE_DIRECTORIES)
+# message(INFO "spdlog_INCLUDE_DIRS: ${spdlog_INCLUDE_DIRS}")
+# include_directories(${spdlog_INCLUDE_DIRS})
 
 add_subdirectory(lib)
 add_subdirectory(tool)

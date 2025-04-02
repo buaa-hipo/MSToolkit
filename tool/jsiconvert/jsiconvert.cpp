@@ -10,6 +10,7 @@ using std::unordered_map;
 #include "record/record_type_traits.h"
 #include "record/record_type_info.h"
 #include "instrument/backtrace.h"
+#include "record/record_reader.h"
 
 bool force = false;
 bool backtrace_enabled = false;
@@ -74,7 +75,7 @@ void parse(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     parse(argc, argv);
-    spdlog::info("hello");
+    // spdlog::info("hello");
     try
     {
         RecordReader reader(input_dir.c_str(), DATA_MODEL, nullptr);
@@ -108,7 +109,7 @@ int main(int argc, char *argv[])
 
         auto trace_dir = root->openDirSection(StaticSectionDesc::TRACE_SEC_ID, true);
         auto backtrace_dir = root->openDirSection(StaticSectionDesc::BACKTRACE_SEC_ID, true);
-        spdlog::info("open root section");
+        // spdlog::info("open root section");
 
         for (const auto &dirEntry: fs::directory_iterator(input_dir)) {
             if (dirEntry.is_regular_file()) {
@@ -132,9 +133,10 @@ int main(int argc, char *argv[])
             }
         }
 
-        spdlog::info("write meta section finish");
-        for (const auto &[id, trace] : traces)
+        // spdlog::info("write meta section finish");
+        for (const auto &[str_id, trace] : traces)
         {
+            auto id = trace->rank();
             auto num_events = trace->num_pmu_events();
             auto dir0 = trace_dir->openDirSection(id+1, true);
             auto dir = dir0->openDirSection(id+1, true);
@@ -166,7 +168,7 @@ int main(int argc, char *argv[])
                 {
                     ptr = (char*)it.val();
                 }
-                if (msgType < 0 || msgType >= sizeof(record_info)/sizeof(record_info[0]))
+                if (msgType < 0 || msgType >= record_info_len)
                     continue;
                 auto type_desc = 
                     pse::utils::EncodedStruct{
@@ -187,8 +189,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        for (auto &[id, backtrace]: backtraces)
+        for (auto &[str_id, backtrace]: backtraces)
         {
+            auto id = backtrace->rank();
             auto dir = backtrace_dir->openDirSection(id+1, true);
             // auto dir = dir0->openDirSection(id+1, true);
             backtrace->backtrace_db_dump(dir);

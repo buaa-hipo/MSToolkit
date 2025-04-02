@@ -27,7 +27,7 @@ int main(int argc, char** argv)
                 }
                 if (it.val()->MsgType != 9 - i)
                 {
-                    spdlog::error("msgtype not match: {} != {}", it.val()->MsgType, 9-i);
+                    // spdlog::error("msgtype not match: {} != {}", it.val()->MsgType, 9-i);
                     exit(-1);
                 }
                 i++;
@@ -35,10 +35,10 @@ int main(int argc, char** argv)
             }
             if (pass != 10)
             {
-                spdlog::error("record number not match: {} != {}", pass, 10);
+                // spdlog::error("record number not match: {} != {}", pass, 10);
                 exit(-1);
             }
-            spdlog::info("pass read test");
+            // spdlog::info("pass read test");
             bool zooms = trace.second->zoom(4, 7, 0);
             pass = 0;
             i = 4;
@@ -50,7 +50,7 @@ int main(int argc, char** argv)
                 }
                 if (it.val()->MsgType != 10 - i)
                 {
-                    spdlog::error("zoom msgtype not match: {} != {}", it.val()->MsgType, 10-i);
+                    // spdlog::error("zoom msgtype not match: {} != {}", it.val()->MsgType, 10-i);
                     exit(-1);
                 }
                 pass += 1;
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
             }
             if (pass != 3)
             {
-                spdlog::error("zoom record number not match: {} != {}", pass, 4);
+                // spdlog::error("zoom record number not match: {} != {}", pass, 4);
                 exit(-1);
             }
             pass = 0;
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
                 }
                 if (it.val()->MsgType != 9 - i)
                 {
-                    spdlog::error("global msgtype not match: {} != {}", it.val()->MsgType, 9-i);
+                    // spdlog::error("global msgtype not match: {} != {}", it.val()->MsgType, 9-i);
                     exit(-1);
                 }
                 pass += 1;
@@ -80,13 +80,13 @@ int main(int argc, char** argv)
             }
             if (pass != 10)
             {
-                spdlog::error("global record number not match: {} != {}", pass, 10);
+                // spdlog::error("global record number not match: {} != {}", pass, 10);
                 exit(-1);
             }
 
             break;
         }
     }
-    spdlog::info("pass");
+    // spdlog::info("pass");
 
 }

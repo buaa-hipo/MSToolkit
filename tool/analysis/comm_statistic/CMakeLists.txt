@@ -5,7 +5,7 @@ SET(HEADER ${JSI_INCLUDE}/record/record_type.h ${JSI_INCLUDE}/record/record_read
 
 add_executable(comm_statistic driver.cpp comm_statistic.cpp  ${HEADER})
 target_compile_features(comm_statistic PRIVATE cxx_std_17)
-target_include_directories(comm_statistic PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS})
-target_link_libraries(comm_statistic ${JSI_LIBRARY} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES})
+target_include_directories(comm_statistic PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${LLVMOpenMP_INCLUDE_DIRS})
+target_link_libraries(comm_statistic ${JSI_LIBRARY} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} ${LLVMOpenMP_LIBRARIES})
 
 install(TARGETS comm_statistic DESTINATION bin)
