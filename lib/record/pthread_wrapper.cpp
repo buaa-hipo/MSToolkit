@@ -15,10 +15,9 @@
 #ifndef RTLD_NEXT
 #define RTLD_NEXT ((void *) -1l)
 #endif
-std::vector<pthread_t> threads;
+
 _EXTERN_C_ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_routine)(void *), void *arg) {
-    
     ensure_pthread_init();
 
     int ret = -1;
@@ -65,7 +64,10 @@ _EXTERN_C_ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         ret = real_pthread_create(thread, attr, start_routine, arg);
         jsi_mark_unsafe_exit();
     }
-    threads.push_back(ret);
+    real_pthread_mutex_lock(&threads_lock);
+    threads->insert(*thread);
+    real_pthread_mutex_unlock(&threads_lock);
+    JSI_LOG(JSILOG_INFO, "create THREDID %p\n", *thread);
     jsi_safe_exit();
 
     return ret;
@@ -97,7 +99,8 @@ _EXTERN_C_ int pthread_join(pthread_t thread, void **retval) {
     {
         ret = real_pthread_join(thread, retval);
     }
-
+    // auto addr = threads.data();
+    // JSI_LOG(JSILOG_INFO, "Address: %p\n", addr);
     jsi_safe_exit();
 
     return ret;
@@ -150,11 +153,10 @@ _EXTERN_C_ void pthread_exit(void *retval) {
     jsi_record_writer_thread_local_wrapper_completed.load() != 1)
     {
         auto rec = (record_pthread_exit_t*) ALLOCATE(
-            sizeof(record_pthread_exit_t) + sizeof(uint64_t) * 2 * jsi_pmu_num);
+            sizeof(record_pthread_exit_t) + sizeof(uint64_t) * jsi_pmu_num);
         // JSI_LOG(JSILOG_INFO, "pthread_exit2.\n");
-        rec = jsi_enter_pthread_exit(rec, event_Pthread_Exit);
+        jsi_enter_pthread_exit(rec, event_Pthread_Exit);
         real_pthread_exit(retval);
-        jsi_exit_pthread_exit(rec);
     }
     else
     {
@@ -221,6 +223,10 @@ _EXTERN_C_ int pthread_mutex_destroy(pthread_mutex_t *mutex) {
     } else {
          ret = real_pthread_mutex_destroy(mutex);
     }
+
+    // for (auto t : threads) {
+    //     JSI_LOG(JSILOG_INFO, "THREDID %p\n", t);
+    // }
 
     jsi_safe_exit();
     return ret;
@@ -367,11 +373,9 @@ _EXTERN_C_ int pthread_cond_destroy(pthread_cond_t *cond) {
 
          auto rec = (record_pthread_cond_destroy_t*) ALLOCATE(
              sizeof(record_pthread_cond_destroy_t) + sizeof(uint64_t) * 2 * jsi_pmu_num);
-        //  JSI_LOG(JSILOG_INFO, "pthread_cond_destroy2.\n");
-         // 假设存在 jsi_enter_pthread_cond_destroy/exit 函数，可参照其他写法
-         // 这里为了示例，直接调用真实函数记录时间
+         rec = jsi_enter_pthread_cond_destroy(rec, event_Pthread_Cond_Destroy);
          ret = real_pthread_cond_destroy(cond);
-         // 此处可增加 jsi_exit_pthread_cond_destroy(rec);
+         jsi_exit_pthread_cond_destroy(rec);
 
     } else {
          ret = real_pthread_cond_destroy(cond);

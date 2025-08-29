@@ -15,11 +15,94 @@
 #include <exception>
 
 #include <utils/lock.h>
+#include <utils/configuration.h>
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+// #define DEBUG
+#ifdef DEBUG
+#include <iostream>
+#define DASSERT(condition, ...) \
+    do { \
+        if (!(condition)) { \
+            std::cerr << "Assertion failed: (" << #condition << "), " \
+                      << __VA_ARGS__ << ", " \
+                      << "file: " << __FILE__ << ", line: " << __LINE__ << std::endl; \
+            std::abort(); \
+        } \
+    } while (0)
+#define DPRINTF(...) printf(__VA_ARGS__);
+#else
+#define DASSERT(condition, ...) 
+#define DPRINTF(...)
+#endif
 
 namespace pse
 {
 namespace fsl
 {
+
+ShmCounter::ShmCounter(bool is_creater, const std::string_view& name) {
+    _is_creater = is_creater;
+    std::string _name(name);
+    key_t key = ftok(_name.c_str(), 1234);
+    key_t key_lock = ftok(_name.c_str(), 4321);
+    if (key == -1) {
+        throw std::runtime_error("Failed to get key for IPC.");
+    }
+    if (_is_creater) {
+        _shmid = shmget(key, sizeof(int), IPC_CREAT | IPC_EXCL | 0666);
+        if (_shmid == -1) {
+            throw std::runtime_error(
+                fmt::format("Failed shmget {} : {}", key, strerror(errno)));
+        }
+        _counter = (int*)shmat(_shmid, NULL, 0);
+        if (_counter == (int*)-1) {
+            throw std::runtime_error(
+                fmt::format("Failed shmat {} : {}", _shmid, strerror(errno)));
+        }
+        *_counter = 0;
+        _lock_id = shmget(key_lock, sizeof(int), IPC_CREAT | IPC_EXCL | 0666);
+        if (_lock_id == -1) {
+            throw std::runtime_error(
+                fmt::format("Failed shmget {} : {}", key_lock, strerror(errno)));
+        }
+    } else {
+        // make sure the creator has already initialize the shared counter
+        do {
+            _lock_id=shmget(key_lock, sizeof(int), 0666);
+        } while (_lock_id==-1);
+        _shmid = shmget(key, sizeof(int), 0666);
+        if (_shmid == -1) {
+            throw std::runtime_error(
+                fmt::format("Failed shmget {} : {}", key, strerror(errno)));
+        }
+        _counter = (int*)shmat(_shmid, NULL, 0);
+        if (_counter == (int*)-1) {
+            throw std::runtime_error(
+                fmt::format("Failed shmat {} : {}", _shmid, strerror(errno)));
+        }
+    }
+    
+}
+ShmCounter::~ShmCounter() {
+    shmdt(_counter);
+    // remove mapped IPC
+    shmctl(_lock_id, IPC_RMID, NULL);
+    shmctl(_shmid, IPC_RMID, NULL);
+}
+int ShmCounter::dec() {
+    std::atomic_ref ref(*_counter);
+    return ref.fetch_add(-1);
+}
+int ShmCounter::inc() {
+    std::atomic_ref ref(*_counter);
+    return ref.fetch_add(1);
+}
+int ShmCounter::get() {
+    return *_counter;
+}
 
 size_t FileSectionLayerDriver::fileSize()
 {
@@ -28,28 +111,29 @@ size_t FileSectionLayerDriver::fileSize()
     return s.st_size;
 }
 
-void FileSectionLayerDriver::preserve(size_t len)
-{
-    // if (driver_atomic_lock)
-    // {
-    //     driver_atomic_lock->lock();
-    // }
-    utils::LockGuard lock_guard(driver_atomic_lock, driver_atomic_lock != nullptr);
-    if (len > fileSize())
-    {
-        auto res = ftruncate(fd, len);
-        if (res < 0)
-        {
-            // spdlog::error("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno));
-            throw std::runtime_error(
-                fmt::format("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno)));
-        }
-    }
-    // if (driver_atomic_lock)
-    // {
-    //     driver_atomic_lock->unlock();
-    // }
-}
+// void FileSectionLayerDriver::preserve(size_t len)
+// {
+//     // if (driver_atomic_lock)
+//     // {
+//     //     driver_atomic_lock->lock();
+//     // }
+//     // utils::LockGuard lock_guard(driver_atomic_lock, driver_atomic_lock != nullptr);
+//     // spdlog::info("preserve:: Holding driver_atomic_lock\n");
+//     if (len > fileSize())
+//     {
+//         auto res = ftruncate(fd, len);
+//         if (res < 0)
+//         {
+//             // spdlog::error("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno));
+//             throw std::runtime_error(
+//                 fmt::format("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno)));
+//         }
+//     }
+//     // if (driver_atomic_lock)
+//     // {
+//     //     driver_atomic_lock->unlock();
+//     // }
+// }
 void *FileSectionLayerDriver::load(size_t offset)
 {
     size_t pageOffset = pageAlign(offset);
@@ -59,18 +143,27 @@ void *FileSectionLayerDriver::load(size_t offset)
     //     return iter->second;
     // }
     auto tryRes = tryLoad(offset);
+    DPRINTF("[DEBUG] tryLoad offset(%x) result: %p\n", offset, tryRes);
     if (tryRes)
     {
         return tryRes;
     }
-    // // spdlog::info("load page offset: {}", pageOffset);
-    auto nextPreservedLength = std::max(pageOffset + PAGE_SIZE, 2 * mapedEnd);
-    if (nextPreservedLength > fileSize())
+    // try to load new pages
     {
-        preserve(nextPreservedLength);
-    }
-    auto newLoadedPage = [this, nextPreservedLength]() {
+        // spdlog::info("Before holding lock: filename={}", _filename);
         utils::LockGuard lock_guard(driver_atomic_lock, driver_atomic_lock != nullptr);
+        // spdlog::info("newLoadedPage: Holding driver_atomic_lock");
+        auto nextPreservedLength = std::max(pageOffset + PAGE_SIZE, 2 * mapedEnd);
+        if (nextPreservedLength > fileSize())
+        {
+                auto res = ftruncate(fd, nextPreservedLength);
+                if (res < 0)
+                {
+                    // spdlog::error("failed to ftruncate fd {} with file size {}: {}", fd, len, strerror(errno));
+                    throw std::runtime_error(
+                        fmt::format("failed to ftruncate fd {} with file size {}: {}", fd, nextPreservedLength, strerror(errno)));
+                }
+        }
         if (mapedEnd < nextPreservedLength)
         {
             auto res = (char *)mmap(mmap_ptr + mapedEnd,
@@ -80,14 +173,41 @@ void *FileSectionLayerDriver::load(size_t offset)
                                     fd,
                                     mapedEnd);
             mprotect(res, nextPreservedLength - mapedEnd, PROT_READ | PROT_WRITE);
+            if (res == MAP_FAILED)
+            {
+                // spdlog::error("failed to mmap offset {} for fd {}: {}", offset, fd, strerror(errno));
+                throw std::runtime_error("mmap failed");
+            }
+            DPRINTF("[DEBUG] update mapedEnd from %p to %p\n", mapedEnd.load(), nextPreservedLength);
             mapedEnd = nextPreservedLength;
-            return res;
         }
-        else
-        {
-            return mmap_ptr + mapedEnd;
-        }
-    }();
+    }
+    // // spdlog::info("load page offset: {}", pageOffset);
+    // auto nextPreservedLength = std::max(pageOffset + PAGE_SIZE, 2 * mapedEnd);
+    // if (nextPreservedLength > fileSize())
+    // {
+    //     preserve(nextPreservedLength);
+    // }
+    // auto newLoadedPage = [this, nextPreservedLength]() {
+    //     // utils::LockGuard lock_guard(driver_atomic_lock, driver_atomic_lock != nullptr);
+    //     // spdlog::info("newLoadedPage: Holding driver_atomic_lock\n");
+    //     if (mapedEnd < nextPreservedLength)
+    //     {
+    //         auto res = (char *)mmap(mmap_ptr + mapedEnd,
+    //                                 nextPreservedLength - mapedEnd,
+    //                                 PROT_READ | PROT_WRITE,
+    //                                 MAP_SHARED | MAP_FIXED,
+    //                                 fd,
+    //                                 mapedEnd);
+    //         mprotect(res, nextPreservedLength - mapedEnd, PROT_READ | PROT_WRITE);
+    //         mapedEnd = nextPreservedLength;
+    //         return res;
+    //     }
+    //     else
+    //     {
+    //         return mmap_ptr + mapedEnd;
+    //     }
+    // }();
     // assert(page == mmap_ptr + mapedEnd);
     /* spdlog::info("mmap {:x} with length {:x} to {:x}, total length {:x}",
                  (size_t)(mmap_ptr + mapedEnd),
@@ -102,11 +222,11 @@ void *FileSectionLayerDriver::load(size_t offset)
         throw std::runtime_error("page offset is not PAGE_SIZE align");
     }
     // auto page = (void *)new char[PAGE_SIZE];
-    if (newLoadedPage == MAP_FAILED)
-    {
-        // spdlog::error("failed to mmap offset {} for fd {}: {}", offset, fd, strerror(errno));
-        throw std::runtime_error("mmap failed");
-    }
+    // if (newLoadedPage == MAP_FAILED)
+    // {
+    //     // spdlog::error("failed to mmap offset {} for fd {}: {}", offset, fd, strerror(errno));
+    //     throw std::runtime_error("mmap failed");
+    // }
     // this->id2ptr.insert({pageOffset, page});
     // this->ptr2id.insert({page, pageOffset});
     // return page;
@@ -152,7 +272,17 @@ void *FileSectionLayerDriver::loadBlock(size_t blockId)
     //     driver_atomic_lock->lock();
     // }
     // // spdlog::debug("load blockId {}", blockId);
+    if (blockId * BLOCK_SIZE > INIT_MMAP_SIZE) {
+        spdlog::info("Max mmap space reached?\n");
+    }
+    DPRINTF("[DEBUG] loading block id %d\n", blockId);
     auto pagePtr = (char *)load(blockId * BLOCK_SIZE);
+    DPRINTF("[DEBUG] loaded page %p\n", pagePtr);
+    DPRINTF("[DEBUG] page %p (PAGESIZE=%x) is valid: page[0]=%x\n", pagePtr, PAGE_SIZE, *((uint32_t*)pagePtr));
+    DPRINTF("[DEBUG] page %p (PAGESIZE=%x) is valid: page[-1]=%x\n", pagePtr, PAGE_SIZE, *((uint32_t*)(pagePtr+PAGE_SIZE-sizeof(uint32_t))));
+    DPRINTF("[DEBUG] switch to blk in this page: blockId=%ld, BLOCKS_PER_PAGE=%ld, BLOCK_SIZE=%ld, blk=%p\n", blockId, BLOCKS_PER_PAGE, BLOCK_SIZE, pagePtr+(blockId % BLOCKS_PER_PAGE) * BLOCK_SIZE);
+    DPRINTF("[DEBUG] blk %p is valid: blk[0]=%x\n", pagePtr + (blockId % BLOCKS_PER_PAGE) * BLOCK_SIZE, *((uint32_t*)(pagePtr + (blockId % BLOCKS_PER_PAGE) * BLOCK_SIZE)));
+    // fflush(stdout);
     // if (driver_atomic_lock)
     // {
     //     driver_atomic_lock->unlock();
@@ -172,6 +302,10 @@ std::pair<void *, Block::block_id_t> FileSectionLayerDriver::allocateBlock()
     // std::lock_guard lock(*driver_atomic_lock);
     auto blkId = blockAllocated->fetch_add(1);
     auto blk = loadBlock(blkId);
+    auto _id = (Block::block_id_t)blkId;
+    DPRINTF("[DEBUG] FileSectionLayerDriver::allocateBlock blk=%p blkId=%d, (block_id_t)blkId=<high=%d, low=%d>, mmap_ptr=%p, mapedEnd_ptr=%p, mapedEnd=%x\n", blk, blkId, _id.high, _id.low, mmap_ptr, mmap_ptr+mapedEnd.load(), mapedEnd.load());
+    memset(blk, 0, sizeof(uint64_t));
+    DPRINTF("[DEBUG] FileSectionLayerDriver::allocateBlock blk=%p seems valid (passed check for accessing blk[0])\n");
     return {blk, (Block::block_id_t)blkId};
 }
 
@@ -187,11 +321,15 @@ std::tuple<void *, Block::block_id_t, size_t> FileSectionLayerDriver::allocateBl
 
 bool FileSectionLayerDriver::blockExists(size_t blockId) { return fileSize() >= detail::blockId2Offset(blockId + 1); }
 
-FileSectionLayerDriver::FileSectionLayerDriver(std::string_view filename)
+FileSectionLayerDriver::FileSectionLayerDriver(std::string_view filename, ral::RWMode mode)
 : _filename(filename)
 , blockAllocated(nullptr)
 , driver_atomic_lock(nullptr)
+, _mode(mode)
 {
+    //! FIXME: should auto-detect the wrong configuration, where no one CREATE the file but reuse the previous trace file, which may lead to unexpected dead locks.
+    INIT_MMAP_SIZE = EnvConfigHelper::get_uint64("JSI_INIT_MMAP_SIZE", DEFAULT_INIT_MMAP_SIZE);
+    spdlog::info("JSI_INIT_MMAP_SIZE={}", INIT_MMAP_SIZE);
     fd = open(_filename.c_str(), O_RDWR | O_CREAT | O_EXCL, 0777);
     if (fd == -1)
     {
@@ -208,37 +346,65 @@ FileSectionLayerDriver::FileSectionLayerDriver(std::string_view filename)
         throw std::runtime_error("failed to open file");
     }
 
-    mmap_ptr = (char *)mmap(
-        nullptr, DEFAULT_INIT_MMAP_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED | MAP_NORESERVE, -1, 0);
-    mprotect(mmap_ptr, DEFAULT_INIT_MMAP_SIZE, PROT_NONE);
+    if (_mode==ral::READ) {
+        auto sz = pageAlign(fileSize() + PAGE_SIZE - 1);
+        // printf("Mapping size: %u\n", sz);
+        mmap_ptr = (char *)mmap(
+            nullptr, sz, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_NORESERVE, fd, 0);
+        mprotect(mmap_ptr, sz, PROT_READ | PROT_WRITE);
+        mapedEnd = sz;
+        INIT_MMAP_SIZE = sz;
+    } else {
+        mmap_ptr = (char *)mmap(
+            nullptr, INIT_MMAP_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED | MAP_NORESERVE, -1, 0);
+        mprotect(mmap_ptr, INIT_MMAP_SIZE, PROT_NONE);
+    }
     if (mmap_ptr == MAP_FAILED)
     {
         // spdlog::error("failed to init mmap: {}", strerror(errno));
-        throw std::runtime_error("mmap failed");
+        throw std::runtime_error("mmap failed: may try lower JSI_INIT_MMAP_SIZE");
+    }
+    if (_mode!=ral::READ) {
+        _shm_counter = new ShmCounter(this->is_creator, filename);
+        _shm_counter->inc();
+    } else {
+        _shm_counter = nullptr;
     }
 }
 
 // FIXME: safe munmap
 FileSectionLayerDriver::~FileSectionLayerDriver()
 {
+    DPRINTF("++++++++ [DEBUG] FileSectionLayerDriver::~FileSectionLayerDriver is_creator=%d +++++++++++\n", is_creator); fflush(stdout);
     // for (const auto &p : this->ptr2id)
     // {
     //     munmap(p.first, PAGE_SIZE);
     // }
+    // FIXME: avoid truncate the file while other process is still flushing records
+    //        Should based on reference counter for safe truncate (only the last one should be responsible for the truncate)
+    if (_shm_counter) {
+        DPRINTF("[Debug] FileSectionLayerDriver::~FileSectionLayerDriver(): shm_counter=%d\n", _shm_counter->get());
+        if (_shm_counter->dec()==1) {
+            DPRINTF("[Debug] FileSectionLayerDriver::~FileSectionLayerDriver(): ftruncate\n");
+            ftruncate(fd, blockAllocated->load() * pse::fsl::BLOCK_SIZE);
+        }
+        delete _shm_counter;
+    }
     close(fd);
     delete blockAllocated;
     delete driver_atomic_lock;
     // msync(mmap_ptr, 1L << 36, MS_SYNC);
-    auto res = munmap(mmap_ptr, DEFAULT_INIT_MMAP_SIZE);
+    auto res = munmap(mmap_ptr, INIT_MMAP_SIZE);
     if (res != 0)
     {
         // spdlog::error("failed to munmap mmap_ptr: {}", strerror(errno));
     }
     // spdlog::info("driver exit");
+    DPRINTF("++++++++ [DEBUG] FileSectionLayerDriver::~FileSectionLayerDriver unmap complete, driver exit: is_creater=%d\n", is_creator); fflush(stdout);
 }
 
 BlockManager::BlockManager(std::string_view name, ral::RWMode mode)
-: driver{name}
+: driver{name, mode}
 , _mode(mode)
 {
     // TODO: READ / WRITE / APPEND / RW mode support
@@ -296,6 +462,7 @@ void *BlockManager::openSection(
     DirSectionDescBlock *parent, Block::desc_t desc, int createMode, bool force, int recordVariableLength)
 {
     // TODO: limit the lock scope
+    // spdlog::info("Holding lock for parent: {}, force={}, createMode={}", fmt::ptr(parent), force, createMode);
     utils::SpinLock lock(parent->atomic_lock);
     utils::LockGuard lock_guard(lock, !force); // Define the lock_guard class with the SpinLock type
     if (desc == 0)
@@ -359,14 +526,16 @@ void *BlockManager::openSection(
 DirSectionDescBlock *BlockManager::openDirSection(DirSectionDescBlock *sec, Block::desc_t desc, bool create, bool force)
 {
     int createMode = create ? CREATE_DIR_SECTION : NO_CREATE;
-    return Block::nullable_cast<DirSectionDescBlock>(openSection(sec, desc, createMode, force, 0));
+    bool _force = create ? force : true;
+    return Block::nullable_cast<DirSectionDescBlock>(openSection(sec, desc, createMode, _force, 0));
 }
 
 DataSectionDescBlock *BlockManager::openDataSection(
     DirSectionDescBlock *sec, Block::desc_t desc, bool create, bool force, int recordVariableLength)
 {
     int createMode = create ? CREATE_DATA_SECTION : NO_CREATE;
-    return Block::nullable_cast<DataSectionDescBlock>(openSection(sec, desc, createMode, force, recordVariableLength));
+    bool _force = create ? force : true;
+    return Block::nullable_cast<DataSectionDescBlock>(openSection(sec, desc, createMode, _force, recordVariableLength));
 }
 
 void BlockManager::writeDataSection(DataSectionDescBlock *sec, size_t offset, const void *buf, size_t len)
@@ -400,6 +569,7 @@ void BlockManager::writeDataSection(DataSectionDescBlock *sec, size_t offset, co
     if (blockOffset != 0)
     {
         auto blk = loadDataBlock(sec, offset);
+        DASSERT(blk!=nullptr, "blk is nullptr! offset=" << offset);
         size_t copyLen = std::min(BLOCK_SIZE - blockOffset, len);
         memcpy(blk + blockOffset, buf, copyLen);
         offset += copyLen;
@@ -411,6 +581,7 @@ void BlockManager::writeDataSection(DataSectionDescBlock *sec, size_t offset, co
         auto tryBlockNum = detail::upperBlockNum(len);
 
         auto [blk, realBlockNum] = loadDataBlock(sec, offset, tryBlockNum);
+        DASSERT(blk!=nullptr, "blk is nullptr! offset=" << offset << ", tryBlockNum=" << tryBlockNum << ", realBlockNum=" << realBlockNum);
         if (realBlockNum == tryBlockNum)
         {
             memcpy(blk, buf, len);
@@ -425,6 +596,7 @@ void BlockManager::writeDataSection(DataSectionDescBlock *sec, size_t offset, co
     if (len > 0)
     {
         auto blk = loadDataBlock(sec, offset);
+        DASSERT(blk!=nullptr, "blk is nullptr! offset=" << offset);
         memcpy(blk, buf, len);
     }
 }

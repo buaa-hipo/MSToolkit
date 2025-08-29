@@ -23,7 +23,7 @@ double get_comm_duration(record_t* r, uint64_t mhz) {
 
 void print_backtrace(std::ofstream &f_out, BacktraceCollection& _backtraces, const CommunicationAnalyzer::CommAnalyzeItem* item) {
 	std::vector<const char*> bt_vec;
-	_backtraces[item->rank]->backtrace_get_context_string_vec(item->data->ctxt, 20, bt_vec);
+	_backtraces[item->id]->backtrace_get_context_string_vec(item->data->ctxt, 20, bt_vec);
 
 	for(auto c : bt_vec) {
 		f_out << c << ";";
@@ -181,7 +181,8 @@ CommunicationAnalyzer::CommunicationAnalyzer(RecordReader& reader, RecordTraceCo
     #pragma omp for
 	for(int i = 0; i < n; i++) {
 		auto it = collection_vec[i];
-		int rank = it.first;
+		int rank = it.second->rank();
+		std::string& id = it.first;
 		tid_to_send2count[tid][rank] = {};
 		
 		get_comm_world_from_meta(metas, rank, comm2name_p[tid]);
@@ -205,7 +206,7 @@ CommunicationAnalyzer::CommunicationAnalyzer(RecordReader& reader, RecordTraceCo
 				if(comm_to_rank2barrierorder[tid][comm2name_p[tid][rd->comm]].find(rank) == comm_to_rank2barrierorder[tid][comm2name_p[tid][rd->comm]].end()) comm_to_rank2barrierorder[tid][comm2name_p[tid][rd->comm]][rank] = 0;
 				#pragma omp critical
 				{
-					_mpi_comm_2_event_map[comm2name_p[tid][rd->comm]][comm_to_rank2barrierorder[tid][comm2name_p[tid][rd->comm]][rank]].push_back({rank,rd});
+					_mpi_comm_2_event_map[comm2name_p[tid][rd->comm]][comm_to_rank2barrierorder[tid][comm2name_p[tid][rd->comm]][rank]].push_back({id,rd});
 				}
 				comm_to_rank2barrierorder[tid][comm2name_p[tid][rd->comm]][rank]++;
 			}
@@ -221,7 +222,7 @@ CommunicationAnalyzer::CommunicationAnalyzer(RecordReader& reader, RecordTraceCo
 			}
 			if(RecordHelper::is_event(r, event_MPI_Wait)) {
 				uint64_t dur = get_comm_duration(r, mhz);
-				CommAnalyzeItem* lit = new CommAnalyzeItem(rank, r, dur, 0, reader.get_pmu_event_num_by_rank(rank));
+				CommAnalyzeItem* lit = new CommAnalyzeItem(rank, r, dur, 0, reader.get_pmu_event_num_by_rank(rank), id);
 				data_wait_p[tid].items.emplace_back(lit);
 				data_wait_p[tid].t_total += dur;
 			}
@@ -229,7 +230,7 @@ CommunicationAnalyzer::CommunicationAnalyzer(RecordReader& reader, RecordTraceCo
 				uint64_t dur = get_comm_duration(r, mhz);
 			
 				auto func_ctx = (backtrace_context_t) r->ctxt;
-				const auto &bt_tree = *_backtraces[rank];
+				const auto &bt_tree = *_backtraces[id];
 				auto enc = encode_backtrace(func_ctx, bt_tree);
 				if(bt_funcfreq_map_p[tid].find(enc) == bt_funcfreq_map_p[tid].end()) {
 					bt_funcfreq_map_p[tid][enc] = {0, 0};
@@ -244,7 +245,7 @@ CommunicationAnalyzer::CommunicationAnalyzer(RecordReader& reader, RecordTraceCo
 					tid_to_send2count[tid][rank][dest]++;
 				}
 					
-				CommAnalyzeItem* lit = new CommAnalyzeItem(rank, r, dur, get_comm_volume(r), reader.get_pmu_event_num_by_rank(rank));
+				CommAnalyzeItem* lit = new CommAnalyzeItem(rank, r, dur, get_comm_volume(r), reader.get_pmu_event_num_by_rank(rank), id);
 				data_comm_p[tid].items.emplace_back(lit);
 				data_comm_p[tid].t_total += dur;
 			}
@@ -382,7 +383,7 @@ void CommunicationAnalyzer::print_long_wait(std::ofstream &f_out) {
 				<< std::string("Event Name: ") + RecordHelper::get_record_name(item->data) + std::string("\n")
 				<< "time: " << item->duration << ", "
 				<< "percentage: " << item->time_percentage << std::endl
-				<< "backtrace: " << _backtraces[item->rank]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
+				<< "backtrace: " << _backtraces[item->id]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
 				<< "======\n";
 		}
 
@@ -397,7 +398,7 @@ void CommunicationAnalyzer::print_long_wait(std::ofstream &f_out) {
 				<< std::string("Event Name: ") + RecordHelper::get_record_name(item->data) + std::string("\n")
 				<< "time: " << item->duration << ", "
 				<< "percentage: " << item->time_percentage << std::endl
-				<< "backtrace: " << _backtraces[item->rank]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
+				<< "backtrace: " << _backtraces[item->id]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
 				<< "======\n";
 		}
 
@@ -451,7 +452,7 @@ void CommunicationAnalyzer::print_high_proportion_MPI_calls(std::ofstream &f_out
 			f_out	<< "rank: " << std::setw(5) << item->rank << ", "
 				<< std::string("Event Name: ") + RecordHelper::get_record_name(item->data) + std::string("\n")
 				<< "proportion: " << item->duration << "/" << _rank_e2etime_map[item->rank] << "=" << (item->duration / (double)_rank_e2etime_map[item->rank]) << std::endl
-				<< "backtrace: " << _backtraces[item->rank]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
+				<< "backtrace: " << _backtraces[item->id]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
 				<< "======\n";
 		}
     }
@@ -497,7 +498,7 @@ void CommunicationAnalyzer::print_high_comm_volume_MPI_calls(std::ofstream &f_ou
 			f_out	<< "rank: " << std::setw(5) << item->rank << ", "
 			<< std::string("Event Name: ") + RecordHelper::get_record_name(item->data) + std::string("\n")
 			<< "volume: " << item->volume << std::endl
-			<< "backtrace: " << _backtraces[item->rank]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
+			<< "backtrace: " << _backtraces[item->id]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
 			<< "======\n";
     	}
     }
@@ -512,7 +513,7 @@ void CommunicationAnalyzer::print_high_freq_MPI_calls(std::ofstream &f_out) {
     int num = 0;
     for(const auto &item : _data_comm.items) {
         auto func_ctx = (backtrace_context_t) item->data->ctxt;
-        const auto &bt_tree = *_backtraces[item->rank];
+        const auto &bt_tree = *_backtraces[item->id];
         auto enc = encode_backtrace(func_ctx, bt_tree);
 		auto comm_times = _bt_funcfreq_map[enc].first;
 		auto time_avg = (_bt_funcfreq_map[enc].second / (double)comm_times);
@@ -531,7 +532,7 @@ void CommunicationAnalyzer::print_high_freq_MPI_calls(std::ofstream &f_out) {
     	int num = 0;
     	for(const auto &item : _data_comm.items) {
 			auto func_ctx = (backtrace_context_t) item->data->ctxt;
-			const auto &bt_tree = *_backtraces[item->rank];
+			const auto &bt_tree = *_backtraces[item->id];
 			auto enc = encode_backtrace(func_ctx, bt_tree);
 			auto comm_times = _bt_funcfreq_map[enc].first;
 			auto time_avg = (_bt_funcfreq_map[enc].second / (double)comm_times);
@@ -543,7 +544,7 @@ void CommunicationAnalyzer::print_high_freq_MPI_calls(std::ofstream &f_out) {
 			f_out	<< "rank: " << std::setw(5) << item->rank << ", "
 			<< std::string("Event Name: ") + RecordHelper::get_record_name(item->data) + std::string("\n")
 			<< "time_avg: " << time_avg << ", communication times:" << comm_times <<std::endl
-			<< "backtrace: " << _backtraces[item->rank]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
+			<< "backtrace: " << _backtraces[item->id]->backtrace_get_context_string(item->data->ctxt, 20) << std::endl
 			<< "======\n";
 			num++;
     	}	

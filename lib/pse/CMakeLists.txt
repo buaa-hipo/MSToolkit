@@ -51,6 +51,7 @@ link_libraries(spdlog::spdlog_header_only)
 # link_libraries(Boost)
 # include_directories(${Boost_INCLUDE_DIRS})
 link_libraries(magic_enum::magic_enum)
+link_libraries(rt)
 
 include_directories(${magic_enum_INCLUDE_DIRS})
 get_target_property(RANGE_V3_INCLUDE_DIRS range-v3 INTERFACE_INCLUDE_DIRECTORIES)

@@ -91,17 +91,16 @@ void parse(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
     // arg parse
     parse(argc, argv);
-    RecordReader* _reader = nullptr;
-    bool enable_dbinfo = true;
-    bool mpi_only = false;
+    RecordReader* _reader       = nullptr;
+    bool          enable_dbinfo = true;
+    bool          mpi_only      = false;
     try {
-        if (mode == 0)
-        {
-            _reader = new RecordReader(input_dir.c_str(),DATA_MODEL,dump_dir.empty() ? nullptr : dump_dir.c_str(), enable_dbinfo, mpi_only, backtrace_enabled);
-        }
-        else
-        {
-            _reader = new RecordReader(input_dir.c_str(),SECTION_MODEL,dump_dir.empty() ? nullptr : dump_dir.c_str(), enable_dbinfo, mpi_only, backtrace_enabled);
+        if (mode == 0) {
+            _reader = new RecordReader(input_dir.c_str(), DATA_MODEL, dump_dir.empty() ? nullptr : dump_dir.c_str(),
+                                       enable_dbinfo, mpi_only, backtrace_enabled);
+        } else {
+            _reader = new RecordReader(input_dir.c_str(), SECTION_MODEL, dump_dir.empty() ? nullptr : dump_dir.c_str(),
+                                       enable_dbinfo, mpi_only, backtrace_enabled);
         }
         RecordReader&          reader = *_reader;
         RecordTraceCollection& traces = reader.get_all_traces();
@@ -148,21 +147,21 @@ int main(int argc, char* argv[]) {
             }
         }
         // dump traces
-        BacktraceCollection& backtraces = reader.get_all_backtraces();
-        RecordTraceCollection& samptraces = reader.get_all_sampling_traces();
-        std::vector<RecordTrace *> rt_list;
-        std::vector<int> rank_list;
-        std::vector<std::string> id_list;
+        BacktraceCollection&      backtraces = reader.get_all_backtraces();
+        RecordTraceCollection&    samptraces = reader.get_all_sampling_traces();
+        std::vector<RecordTrace*> rt_list;
+        std::vector<int>          rank_list;
+        std::vector<std::string>  id_list;
         for (auto it = traces.begin(); it != traces.end(); ++it) {
             rt_list.push_back(it->second);
             rank_list.push_back(it->second->rank());
             id_list.push_back(it->first);
         }
-        // #pragma omp parallel for
+#pragma omp parallel for
         for (int i = 0; i < rt_list.size(); i++) {
             FILE* fp;
             int   rank = rank_list[i];
-            auto id = id_list[i];
+            auto  id   = id_list[i];
             if (is_dump) {
                 std::string fn;
                 if (rank >= 0) {
@@ -191,7 +190,11 @@ int main(int argc, char* argv[]) {
                 }
                 fprintf(fp, "=== Event %d ===\n", j);
                 // Write trace data and backtraces (if exist)
-                fprintf(fp, "%s", RecordHelper::dump_string(it.val(), backtraces[id]).c_str());
+                if (backtrace_enabled) {
+                    fprintf(fp, "%s", RecordHelper::dump_string(it.val(), backtraces[id]).c_str());
+                } else {
+                    fprintf(fp, "%s", RecordHelper::dump_string(it.val()).c_str());
+                }
                 // Write PMU event counter values
                 for (int eidx = 0; eidx < num_events; eidx++) {
                     auto&      event_name = event_list[eidx];
@@ -207,8 +210,8 @@ int main(int argc, char* argv[]) {
         }
 
         std::cout << "Processing EXT trace" << std::endl;
-        bool has_accl = false;
-        std::unordered_map<std::string, MetaDataMap *> tmp_metaMap;
+        bool                                          has_accl = false;
+        std::unordered_map<std::string, MetaDataMap*> tmp_metaMap;
 
         MetaDataMap::MetaValue_t* t;
         for (auto meta_it = metas.begin(); meta_it != metas.end(); ++meta_it) {
@@ -232,7 +235,7 @@ int main(int argc, char* argv[]) {
             auto metaMap = it->second->getMetaMap();
             if (!metaMap.contains("HOST INFO")) continue;
             metaMap.at("HOST INFO")->get("PID", &t);
-            int pid = t->i32;
+            int pid             = t->i32;
             rank2pid[it->first] = pid;
         }
 
@@ -248,6 +251,7 @@ int main(int argc, char* argv[]) {
             delete _reader;
             return 0;
         }
+        printf("etraces by rank [0] size: %u\n", reader.get_all_etraces_by_rank()[0].size());
         if (std::string(dev_type).substr(0, 6) == "MATRIX") {
             accl_trace_meta_map->get("ACCL_PMU_NUM_EVENTS", &t);
             auto dev_pmu_num = t->i32;
@@ -257,6 +261,7 @@ int main(int argc, char* argv[]) {
                 auto rank = etrace->rank();
                 if (rank < 0) continue;
                 int thread_num = 96;
+#pragma omp parallel for
                 for (int i = 0; i < thread_num; ++i) {
                     if (!etrace->exist(i)) continue;
                     FILE* fp;
@@ -278,8 +283,7 @@ int main(int argc, char* argv[]) {
                     }
                     fprintf(fp, "##EXT Trace of %s Device - Thread %d\n", dev_type, i);
                     for (auto outer_it = etrace->begin(i); outer_it != etrace->end(i); ++outer_it) {
-                        auto rec = outer_it.get();
-                        std::cout << "Size of ext trace: " << outer_it.record_size() << std::endl;
+                        auto            rec = outer_it.get();
                         AcclRecordTrace accl_record_trace(rec, dev_pmu_num, outer_it.record_size(), dev_event_str,
                                                           dev_type, string_sections[str_id]);
                         fprintf(fp, "%s", accl_record_trace.to_string().c_str());

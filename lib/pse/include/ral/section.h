@@ -311,6 +311,12 @@ public:
         auto self = static_cast<const DirSectionImpl_t *>(this);
         return self->getSectionType(desc);
     }
+
+    auto is_valid() const
+    {
+        auto self = static_cast<const DirSectionImpl_t *>(this);
+        return self->is_valid();
+    }
 };
 
 template <typename StreamSectionImpl_t>
@@ -348,6 +354,12 @@ public:
         auto self = static_cast<const StreamSectionImpl_t *>(this);
         return self->size();
     }
+    
+    auto is_valid() const
+    {
+        auto self = static_cast<const StreamSectionImpl_t *>(this);
+        return self->is_valid();
+    }
 };
 template <typename StringSectionImpl_t>
 class StringSectionMixin
@@ -369,6 +381,12 @@ public:
         auto self = static_cast<const StringSectionImpl_t *>(this);
         return self->total_length();
     }
+
+    auto is_valid() const
+    {
+        auto self = static_cast<const StringSectionImpl_t *>(this);
+        return self->is_valid();
+    }
 };
 template <typename DataSectionImpl_t>
 class DataSectionMixin
@@ -388,6 +406,12 @@ public:
     size_t record_size() const { return static_cast<const DataSectionImpl_t *>(this)->record_size(); }
     size_t time_offset() const { return static_cast<const DataSectionImpl_t *>(this)->time_offset(); }
     ral::desc_t self_desc() const { return static_cast<const DataSectionImpl_t *>(this)->self_desc(); }
+
+    auto is_valid() const
+    {
+        auto self = static_cast<const DataSectionImpl_t *>(this);
+        return self->is_valid();
+    }
 };
 
 class DataSectionInterface
@@ -400,6 +424,7 @@ public:
     virtual size_t record_size() const = 0;
     virtual size_t time_offset() const = 0;
     virtual desc_t self_desc() const = 0;
+    virtual bool is_valid() const = 0;
 
     class Iterator
     {
@@ -437,6 +462,7 @@ public:
         bool operator!=(const Iterator &other) const { return !(*this == other); }
         size_t time() const { return *(size_t *)((char *)*(*this) + _sec->time_offset()); }
         desc_t desc() const { return _sec->self_desc(); }
+        size_t record_size() const { return _sec->record_size(); }
     };
 
     Iterator begin() { return Iterator(this, 0); }
@@ -449,6 +475,7 @@ public:
     virtual size_t read(char *str, size_t offset, int buf_len) = 0;
     virtual size_t total_length() const = 0;
     virtual ~StringSectionInterface() = default;
+    virtual bool is_valid() const = 0;
 };
 class StreamSectionInterface
 {
@@ -461,6 +488,7 @@ public:
     virtual off_t tell() = 0;
     virtual size_t size() const = 0;
     virtual ~StreamSectionInterface() = default;
+    virtual bool is_valid() const = 0;
 };
 class DirSectionInterface
 {
@@ -487,6 +515,7 @@ public:
     virtual ~DirSectionInterface() = default;
     virtual desc_t self_desc() const = 0;
     virtual SectionBase::SectionType getSectionType(desc_t desc) const = 0;
+    virtual bool is_valid() const = 0;
 
     class Iterator
     {
@@ -604,11 +633,12 @@ public:
     _record_size(record_size),
     cur(0)
     {
-        buffer = new char[record_size * BUFFER_RECORD_NUM];
+        // make sure the buffer size is correct
         if (_record_size == -1)
         {
             _record_size = this->record_size();
         }
+        buffer = new char[_record_size * BUFFER_RECORD_NUM];
     }
     virtual ~DataSectionWrapper()
     {
@@ -664,6 +694,12 @@ public:
         auto &_sec_mixin = static_cast<const DataSectionMixin<T> &>(_sec);
         return _sec_mixin.self_desc();
     }
+
+    virtual bool is_valid() const override
+    {
+        auto &_sec_mixin = static_cast<const DataSectionMixin<T> &>(_sec);
+        return _sec_mixin.is_valid();
+    }
 };
 template <typename T>
     requires std::is_base_of_v<StringSectionMixin<T>, T>
@@ -691,6 +727,11 @@ public:
     {
         auto &_sec_mixin = static_cast<const StringSectionMixin<T> &>(_sec);
         return _sec_mixin.total_length();
+    }
+    virtual bool is_valid() const override
+    {
+        auto &_sec_mixin = static_cast<const StringSectionMixin<T> &>(_sec);
+        return _sec_mixin.is_valid();
     }
 };
 template <typename T>
@@ -730,6 +771,11 @@ public:
     {
         auto &_sec_mixin = static_cast<const StreamSectionMixin<T> &>(_sec);
         return _sec_mixin.size();
+    }
+    virtual bool is_valid() const override
+    {
+        auto &_sec_mixin = static_cast<const StreamSectionMixin<T> &>(_sec);
+        return _sec_mixin.is_valid();
     }
 };
 template <typename T>
@@ -781,6 +827,12 @@ public:
     {
         auto &_sec_mixin = static_cast<const DirSectionMixin<T> &>(_sec);
         return _sec_mixin.getSectionType(desc);
+    }
+    
+    virtual bool is_valid() const override
+    {
+        auto &_sec_mixin = static_cast<const DirSectionMixin<T> &>(_sec);
+        return _sec_mixin.is_valid();
     }
 
     class DirSectionIterator

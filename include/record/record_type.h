@@ -7,7 +7,9 @@
 // #include "instrument/backtrace.h"
 #include "record/record_defines.h"
 
+#ifdef USING_OMPT
 #include <ompt.h>
+#endif
 
 #define MPI_UNKNOWN ((int16_t)(-1))
 // #define JSI_PROCESS_START ((int16_t)(-2))
@@ -238,6 +240,7 @@ struct mt_record_malloc_t {
     uint32_t bytes;
     uint32_t mode;
     uint32_t kind;
+    void *address;
 };
 
 struct mt_record_free_t {
@@ -503,6 +506,7 @@ struct record_memory_posix_memalign{
     int error_code;
 };
 
+#ifdef USING_OMPT
 /* OPENMP TRACER RECORD TYPE */
 struct ext_record_ompt_thread_begin_t {
     record_t record;
@@ -657,6 +661,82 @@ struct ext_record_ompt_cancel_t {
     int flags; 
     const void *codeptr_ra;
 };
+
+#else 
+
+struct ext_record_ompt_thread_begin_t {
+    record_t record;
+};
+
+struct ext_record_ompt_thread_end_t {
+    record_t record;
+};
+
+struct ext_record_ompt_parallel_begin_t {
+    record_t record;
+};
+
+struct ext_record_ompt_parallel_end_t {
+    record_t record;
+};
+
+struct ext_record_ompt_work_t {
+    record_t record;
+};
+
+struct ext_record_ompt_dispatch_t {
+    record_t record;
+};
+
+struct ext_record_ompt_task_create_t {
+    record_t record;
+};
+
+struct ext_record_ompt_dependences_t {
+    record_t record;
+};
+
+struct ext_record_ompt_task_dependence_t {
+    record_t record;
+};
+
+struct ext_record_ompt_task_schedule_t {
+    record_t record;
+};
+
+struct ext_record_ompt_implicit_task_t {
+    record_t record;
+};
+
+struct ext_record_ompt_master_t {
+    record_t record;
+};
+
+struct ext_record_ompt_sync_region_t {
+    record_t record;
+};
+
+struct ext_record_ompt_mutex_acquire_t {
+    record_t record;
+};
+
+struct ext_record_ompt_mutex_t {
+    record_t record;
+};
+
+struct ext_record_ompt_nest_lock_t {
+    record_t record;
+};
+
+struct ext_record_ompt_flush_t {
+    record_t record;
+};
+
+struct ext_record_ompt_cancel_t {
+    record_t record;
+};
+
+#endif
 
 struct record_pthread_create_t {
     record_t record;

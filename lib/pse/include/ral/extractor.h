@@ -85,6 +85,7 @@ public:
     void *operator*() { return *(_queue.top().first); }
 
     auto get() const { return _queue.top().first; }
+    auto record_size() const { return _queue.top().first.record_size(); }
 
     SectionExtractor &operator++()
     {

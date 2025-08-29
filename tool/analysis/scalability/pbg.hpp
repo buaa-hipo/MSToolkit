@@ -1,5 +1,7 @@
 #include <cstdint>
+#include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "record/record_reader.h"
@@ -16,31 +18,52 @@ enum class NodeType {
 // No MPI_Waitall record, so wait node would only have one sync dependent.
 class BehaviorNode {
 private:
-    NodeType                                  node_type_;
-    const uint64_t                            unique_key_;
-    const uint64_t                            enter_timestamp_;
-    const uint64_t                            exit_timestamp_;
-    double                                    anomaly_factor_;
-    BehaviorNode                             *data_dependent_;
-    BehaviorNode                             *children_;
-    std::vector<BehaviorNode *>               comm_dependents_;
-    std::vector<BehaviorNode *>               sync_dependents_;
+    NodeType            node_type_;
+    backtrace_context_t backtrace_;
+    const uint64_t      unique_key_;
+    uint64_t            time_duration_;
+    uint64_t            ins_duration_;
+    int                 call_count_;
+    int                 visit_count_;
+    double              anomaly_factor_;
+    double              accumulated_anomaly_factor_;
+    BehaviorNode       *data_dependent_;
+    BehaviorNode       *comm_dependent_;
+    BehaviorNode       *sync_dependent_;
+
     std::unordered_map<std::string, uint64_t> event_counts_;
 
 public:
+    const std::string str_id_;
     BehaviorNode() = delete;
 
-    BehaviorNode(uint64_t key, uint64_t enter_ts, uint64_t exit_ts, double factor,
+    BehaviorNode(backtrace_context_t bt, uint64_t key, uint64_t time, uint64_t ins, std::string id,
                  NodeType type = NodeType::SIMPLE_NODE)
         : node_type_(type),
+          backtrace_(bt),
           unique_key_(key),
-          enter_timestamp_(enter_ts),
-          exit_timestamp_(exit_ts),
-          anomaly_factor_(factor) {
+          time_duration_(time),
+          ins_duration_(ins),
+          anomaly_factor_(0.0),
+          accumulated_anomaly_factor_(0.0),
+          visit_count_(0),
+          str_id_(id),
+          call_count_(1),
+          data_dependent_(nullptr),
+          comm_dependent_(nullptr),
+          sync_dependent_(nullptr) {
     }
 
-    void embed_event_counts(std::unordered_map<std::string, uint64_t> &&event_counts) {
-        event_counts_ = event_counts;
+    void add_time(uint64_t time) {
+        time_duration_ += time;
+    }
+
+    void add_ins(uint64_t ins) {
+        ins_duration_ += ins;
+    }
+
+    void add_call_count() {
+        ++call_count_;
     }
 
     void add_data_dependent(BehaviorNode *dependent) {
@@ -49,16 +72,47 @@ public:
     }
 
     void add_comm_dependent(BehaviorNode *dependent) {
-        comm_dependents_.push_back(dependent);
+        comm_dependent_ = dependent;
     }
 
     void add_sync_dependent(BehaviorNode *dependent) {
-        sync_dependents_.push_back(dependent);
+        sync_dependent_ = dependent;
     }
 
-    void add_child(BehaviorNode *child) {
-        // children_.push_back(child);
-        children_ = child;
+    uint64_t get_unique_key() const {
+        return unique_key_;
+    }
+
+    auto get_backtrace() {
+        return backtrace_;
+    }
+
+    auto &get_anomaly_factor() {
+        return anomaly_factor_;
+    }
+
+    auto &get_accumulated_anomaly_factor() {
+        return accumulated_anomaly_factor_;
+    }
+
+    auto get_data_dependent() {
+        return data_dependent_;
+    }
+
+    auto get_comm_dependent() {
+        return comm_dependent_;
+    }
+
+    auto get_sync_dependent() {
+        return sync_dependent_;
+    }
+
+    auto &get_visit_count() {
+        return visit_count_;
+    }
+
+    auto get_node_type() {
+        return node_type_;
     }
 };
 
@@ -84,34 +138,70 @@ public:
 
 class ProgramBehaviorGraph {
 private:
-    bool                                         pmu_involved_;
-    std::unordered_map<uint32_t, BehaviorNode *> process_behavior_graph_;
-    std::vector<BehaviorNode *>                  candidate_anomaly_nodes_;
-    std::vector<AnomalyPath>                     anomaly_paths_;
+    bool                                                      pmu_involved_;
+    std::unordered_map<uint32_t, std::vector<BehaviorNode *>> behavior_graph_;
+    std::unordered_set<BehaviorNode *>                        candidate_anomaly_nodes_;
+    std::vector<AnomalyPath>                                  anomaly_paths_;
+
+    BacktraceCollection &backtrace_trees;
+    // {<unique backtrace key>, <total_time, total_ins>}
+    // Fingerprint of different nodes in differentiation stage.
+    // std::unordered_map<uint64_t, PBG::BehaviorNode *> global_node_map;
+    // std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> global_node_map_;
+    std::unordered_map<uint64_t, std::vector<uint64_t>> fingerprint2time_;
+    std::unordered_map<uint64_t, std::vector<uint64_t>> fingerprint2ins_;
+    std::unordered_map<uint64_t, uint64_t>              fingerprint2tot_time_;
+    std::unordered_map<uint64_t, uint64_t>              fingerprint2tot_ins_;
+    std::unordered_map<uint64_t, double>                fingerprint2time_var_;
 
 public:
-    ProgramBehaviorGraph() = default;
+    ProgramBehaviorGraph() = delete;
 
-    auto get_pbg_size() const {
-        return process_behavior_graph_.size();
+    ProgramBehaviorGraph(BacktraceCollection &bt) : backtrace_trees(bt) {
     }
 
-    void add_graph_by_rank(uint32_t rank, BehaviorNode *root);
+    auto get_pbg_size() const {
+        return behavior_graph_.size();
+    }
+
+    auto &behavior_graph() const {
+        return behavior_graph_;
+    }
+
+    void build_graph_for_processes(RecordTraceCollection &, RankMetaCollection &, BacktraceCollection &);
+
+    void build_graph_for_program();
     void add_inter_dependency();
-    void differentiate(ProgramBehaviorGraph &another_pbg);
-    void backtrack(double anomaly_threshold);
+    void differentiate(ProgramBehaviorGraph &, double, double, double, double);
+    void backtrack(double decay_factor, double merge_factor);
+
+    auto &get_fingerprint2time() {
+        return fingerprint2time_;
+    }
+
+    auto &get_fingerprint2ins() {
+        return fingerprint2ins_;
+    }
+
+    auto &get_fingerprint2tot_time() {
+        return fingerprint2tot_time_;
+    }
+
+    auto &get_fingerprint2tot_ins() {
+        return fingerprint2tot_ins_;
+    }
+
+    auto &get_fingerprint2time_var() {
+        return fingerprint2time_var_;
+    }
 
     auto get_anomaly_paths() const {
         return anomaly_paths_;
     }
 
-    void operator-(ProgramBehaviorGraph &another_pbg) {
-        differentiate(another_pbg);
-    }
+    void sort_nodes();
+
+    void print_result(int, std::ostream&);
 };
 
 };  // namespace PBG
-
-std::vector<PBG::BehaviorNode *> build_graph_for_processes(RecordTraceCollection &, RankMetaCollection &,
-                                                           BacktraceCollection &);
-PBG::ProgramBehaviorGraph       *build_graph_for_program(std::vector<PBG::BehaviorNode *> &);

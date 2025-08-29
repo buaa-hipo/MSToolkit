@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.0)
 project(tracelib LANGUAGES CXX)
 
-find_package(MPI REQUIRED)
+# find_package(MPI REQUIRED)
 
 SET(JSI_TRACELIB jsi_record)
 

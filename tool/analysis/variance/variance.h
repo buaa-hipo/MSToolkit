@@ -16,13 +16,18 @@ class VarianceMap {
     typedef struct {
         double variance;
 	    int rank;
-        record_t* p_rec;
-        record_t* c_rec;
+        // record_t* p_rec;
+        // record_t* c_rec;
+        uint64_t enter;
+        uint64_t exit;
         uint64_t count;
+        uint64_t count_opt_2;
     } CalcVarianceRecord;
 
-#define CalcVarianceRecordGetEnterTS(p_cvr) (p_cvr->p_rec->timestamps.exit)
-#define CalcVarianceRecordGetExitTS(p_cvr) (p_cvr->c_rec->timestamps.enter)
+// #define CalcVarianceRecordGetEnterTS(p_cvr) (p_cvr->p_rec->timestamps.exit)
+// #define CalcVarianceRecordGetExitTS(p_cvr) (p_cvr->c_rec->timestamps.enter)
+#define CalcVarianceRecordGetEnterTS(p_cvr) (p_cvr->enter)
+#define CalcVarianceRecordGetExitTS(p_cvr) (p_cvr->exit)
 
     typedef struct {
         CommVarianceRecord comm_rec;
@@ -39,7 +44,7 @@ class VarianceMap {
         uint64_t gpu_offset; // as gpu event uses different clock, we use brute force aligntment with the first gpu event.
     } VarianceData;
 
-    VarianceMap(RecordTraceCollection& collection, BacktraceCollection& bt_collection, RecordTraceExtCollection& rte_collection, const std::string& ref_metric, bool enable_async_comm);
+    VarianceMap(RankMetaCollection& metas, RecordTraceCollection& collection, BacktraceCollection& bt_collection, RankExtRecordTraceCollection& etraces_collection, StringSectionCollection& string_sections, const std::string &ref_metric, const std::string &ref_metric_opt, bool enable_async_comm, bool enable_warning);
     ~VarianceMap();
 
     const std::unordered_map<int, VarianceData*>& getVarMap();

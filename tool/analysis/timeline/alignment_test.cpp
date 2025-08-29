@@ -43,7 +43,7 @@ void parse(int argc, char *argv[]) {
 int main(int argc, char* argv[]) {
     parse(argc, argv);
     try {
-        RecordReader reader(input_dir.c_str(),DATA_MODEL);
+        RecordReader reader(input_dir.c_str(),SECTION_MODEL);
         RecordTraceCollection& traces = reader.get_all_traces();
         RankMetaCollection& metas = reader.get_all_meta_maps();
         TimelineAlignment ta;

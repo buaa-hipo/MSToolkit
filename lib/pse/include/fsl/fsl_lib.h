@@ -33,11 +33,26 @@ inline size_t upperBlockNum(size_t len) { return (len + BLOCK_SIZE - 1) / BLOCK_
 
 } // namespace detail
 
+class ShmCounter {
+  public:
+    ShmCounter(bool is_creater, const std::string_view& name);
+    ~ShmCounter();
+    int inc();
+    int dec();
+    int get();
+  private:
+    bool  _is_creater;
+    int* _counter;
+    int _lock_id;
+    int _shmid;
+};
+
 class DirSectionIterator;
 class FileSectionLayerDriver
 {
     friend class DirSectionIterator;
-    static constexpr size_t DEFAULT_INIT_MMAP_SIZE = 1L << 40;
+    size_t INIT_MMAP_SIZE;
+    static constexpr size_t DEFAULT_INIT_MMAP_SIZE = 1L << 33;
     char *mmap_ptr;
     std::atomic<size_t> mapedEnd{0};
     friend BlockManager;
@@ -49,7 +64,7 @@ class FileSectionLayerDriver
     std::atomic_ref<size_t> *blockAllocated;
     utils::SpinLock<int> *driver_atomic_lock;
     // Block::block_id_t blockAllocated;
-    void preserve(size_t len);
+    // void preserve(size_t len);
     void *load(size_t offset);
     void unload(void *ptr);
     void *loadBlock(size_t blockId);
@@ -59,9 +74,11 @@ class FileSectionLayerDriver
     bool blockExists(size_t blockId);
     void *tryLoad(size_t offset);
     bool is_creator;
+    ral::RWMode _mode;
+    ShmCounter* _shm_counter;
 
 public:
-    FileSectionLayerDriver(std::string_view filename);
+    FileSectionLayerDriver(std::string_view filename, ral::RWMode mode);
     ~FileSectionLayerDriver();
 
     static size_t pageAlign(size_t val) { return (val & (~(PAGE_SIZE - 1))); }
@@ -181,6 +198,7 @@ private:
     {
         auto [_ptr, id] = allocateRaw();
         T *ptr = (T *)_ptr;
+        // spdlog::info("allocated block type {} at {}: ptr={}", utils::namesv<(Block::BLOCK_TYPE_ENUM)T::BLOCK_TYPE_ID>, id, _ptr);
         ptr->init();
         // spdlog::debug("allocate block type {} at {}", utils::namesv<(Block::BLOCK_TYPE_ENUM)T::BLOCK_TYPE_ID>, id);
         assert(id > 1);

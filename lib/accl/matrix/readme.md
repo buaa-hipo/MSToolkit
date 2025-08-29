@@ -6,6 +6,7 @@
 - `hthread_malloc`得到的内存空间是由Host和Device端共享的，目前没有发现由内存序导致的问题
 - 迈创Device端的GSM地址似乎会涉及`0x0`这个看似非法的地址，打印出来也是(nil)，但就是和NULL不等，注意
 - 迈创Device端不能进行文件IO，stdio也只能用`hthread_printf`操作，否则卡死
+- **迈创Device端对DDR和HBM（HBSM）的内存分配会向CPU发中断，如果恰逢CPU也在分配DDR内存，则会死锁，所以在当前版本的hthread环境下Device端尽量不要进行一切有关DDR和HBM（HBSM）内存分配的操作（malloc、hbm_malloc、hthread_printf等）**，其它stdlib.h中的函数未做实验验证
 - Device端似乎没有直接获取自己所在DSP簇号的方法
 
 # 迈创插桩器说明

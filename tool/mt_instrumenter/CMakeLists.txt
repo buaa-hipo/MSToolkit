@@ -48,7 +48,7 @@ find_path(CLANG_INCLUDE_DIR
         /usr/local/include
         /opt/local/include
         /sw/include
-        ENV CPATH
+        ENV CLANG_INCLUDE_DIR
 )
 
 # 查找 Clang 库文件
@@ -59,7 +59,7 @@ find_path(CLANG_LIBRARY_DIR
         /usr/local/lib
         /opt/local/lib
         /sw/lib
-        ENV LIBRARY_PATH
+        ENV CLANG_LIB_DIR
 )
 
 # 检查是否找到 Clang 头文件和库文件
@@ -89,5 +89,10 @@ endif()
 #     message(FATAL_ERROR "Could not find clang library")
 # endif()
 
-install(TARGETS mt_host_instrumenter DESTINATION tools)
-install(TARGETS mt_dev_instrumenter DESTINATION tools)
+# target_compile_options(mt_dev_instrumenter PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g)
+# target_compile_options(mt_host_instrumenter PRIVATE -fsanitize=address -fsanitize=undefined -fsanitize=leak -g)
+
+install(TARGETS mt_host_instrumenter DESTINATION bin)
+install(TARGETS mt_dev_instrumenter DESTINATION bin)
+install(PROGRAMS instrument_dev.sh DESTINATION bin RENAME instrument_dev)
+install(PROGRAMS instrument_host.sh DESTINATION bin RENAME instrument_host)

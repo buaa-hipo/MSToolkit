@@ -4,6 +4,14 @@
 #include <sys/time.h>
 
 #ifdef __aarch64__
+// #ifdef __MATRIX
+//     static inline uint64_t get_tsc_freq_mhz() {
+//         return 2200; // MHz
+//     }
+//     // static inline uint64_t get_tsc_freq_mhz() {
+//     //     return 50; // MHz
+//     // }
+// #else
     static inline uint64_t get_tsc_freq_mhz() {
         uint64_t freq;
         // Read cntfrq_el0 reg to get the tsc freq in Hz
@@ -11,7 +19,7 @@
                     : "=r"(freq));
         return freq / 1000000; // `freq` is in Hz and need to be converted to MHz
     }
-
+// #endif
     static inline uint64_t get_tsc_raw() {
         uint64_t tsc;
         asm volatile("isb; mrs %0, cntvct_el0"

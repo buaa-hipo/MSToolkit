@@ -115,10 +115,24 @@ string encode_memcpy(record_activity_memcpy_t* r) {
     return string("M")+to_string(count) + "/" + to_string(r->kind);
 }
 
-string encode_launch(record_activity_launch_t* r) {
+string encode_launch_hip(record_activity_launch_t* r) {
     // Only consider thread counts
     return string("A")+to_string(r->blockNum.x) + "_" + to_string(r->blockNum.y) + "_" + to_string(r->blockNum.z) + "/"
             + to_string(r->blockDim.x) + "_" + to_string(r->blockDim.y) + "_" + to_string(r->blockDim.z);
+}
+
+string encode_launch_mt(mt_record_kernel_launch_t* r) {
+    return string("A")+to_string(r->cluster_id) + "_" + to_string(r->thread_num) + "_" + to_string(r->group_id) + "_" + to_string(r->thread_mask) + "_" + to_string(r->scalar_args_num) + "_" + to_string(r->ptr_args_num);
+}
+
+string encode_launch(record_t* r) {
+    if(RecordHelper::is_hip_kernel_launch(r)) {
+        return encode_launch_hip((record_activity_launch_t*)r);
+    }
+    if(RecordHelper::is_mt_kernel_launch(r)) {
+        return encode_launch_mt((mt_record_kernel_launch_t*)r);
+    }
+    JSI_ERROR("UNKNOWN LAUNCH RECORD\n"); 
 }
 
 typedef uint64_t STG_Key_t; /* current ip OR backtrace context*/
@@ -144,7 +158,7 @@ struct edge_hash {
 class STG {
   public:
     bool enable_async_comm;
-    void reset() { last=0; last_r=NULL; enable_async_comm=true; }
+    void reset() { last=0; last_r=std::make_pair(0,std::make_pair(0,0)); last_r_cached=false; enable_async_comm=true; }
     void clear() { 
         reset();
         nodes.clear();
@@ -159,6 +173,7 @@ class STG {
 		                  record_t* r, 
                           BacktraceTree* bt, 
                           int tot_ins_counter_idx, 
+                          int opt_counter_idx,
                           int num_events, 
                           STG_Edge_t& e, 
                           VarianceMap::VarianceData* vdata) {
@@ -171,12 +186,12 @@ class STG {
                 VarianceMap::CommVarianceRecord* cr = new VarianceMap::CommVarianceRecord({-1, rank, r});
                 nval.rlist.push_back(cr);
                 commRecs.push_back(cr);
-        } else if(JSI_ACCL_EVENT_IS_LAUNCH(r->MsgType)) {
+        } else if(RecordHelper::is_hip_kernel_launch(r) || RecordHelper::is_mt_kernel_launch(r)) {
             // printf("## LAUNCH event ##\n");
             VarianceMap::AcclVarianceRecord* cr = new VarianceMap::AcclVarianceRecord({-1, rank, r});
             nval.rlist.push_back((VarianceMap::CommVarianceRecord*)cr);
             vdata->accl_calc_vars.push_back(cr);
-        } else if(JSI_ACCL_EVENT_IS_MEMCPY(r->MsgType) || JSI_ACCL_EVENT_IS_MEMCPY_ASYNC(r->MsgType)) {
+        } else if(RecordHelper::is_hip_memcpy(r) || RecordHelper::is_hip_memcpy_async(r)) {
             // printf("## MEMCPY event ##\n");
             VarianceMap::AcclVarianceRecord* cr = new VarianceMap::AcclVarianceRecord({-1, rank, r});
             nval.rlist.push_back((VarianceMap::CommVarianceRecord*)cr);
@@ -245,19 +260,28 @@ class STG {
             }
         }
         
-        if (last_r!=NULL) {
+        if (last_r_cached) {
             e = std::make_pair(last, key);
             STG_EVal_t& eval = edges[e];
             // uint64_t tot_ins = RecordHelper::counter_diff(r, tot_ins_counter_idx, num_events);
-            uint64_t* p_cnt = RecordHelper::counters_runtime_inferred(last_r) + num_events;
             uint64_t* c_cnt = RecordHelper::counters_runtime_inferred(r);
-            uint64_t count = c_cnt[tot_ins_counter_idx] - p_cnt[tot_ins_counter_idx];
-            VarianceMap::CalcVarianceRecord* cr2 = new VarianceMap::CalcVarianceRecord({-1, rank, last_r, r, count});
+            uint64_t count = c_cnt[tot_ins_counter_idx] - last_r.second.first;
+            uint64_t count_opt_2 = 0;
+            if (opt_counter_idx>=0) {
+                count_opt_2 = c_cnt[tot_ins_counter_idx] - last_r.second.second;
+            }
+            VarianceMap::CalcVarianceRecord* cr2 = new VarianceMap::CalcVarianceRecord({-1, rank, last_r.first, r->timestamps.enter, count, count_opt_2});
             eval.rlist.push_back(cr2);
             calcRecs.push_back(cr2);
         }
         last = key;
-        last_r = r;
+        uint64_t* cnt = RecordHelper::counters_runtime_inferred(r) + num_events;
+        if (opt_counter_idx>=0) {
+            last_r = std::make_pair(r->timestamps.exit, std::make_pair(cnt[tot_ins_counter_idx], cnt[opt_counter_idx]));
+        } else {
+            last_r = std::make_pair(r->timestamps.exit, std::make_pair(cnt[tot_ins_counter_idx], 0));
+        }
+        last_r_cached = true;
         return key;
     }
     void merge(STG& stg) {
@@ -271,7 +295,7 @@ class STG {
             STG_NVal_t& val = it->second;
             auto ni = nodes.find(key);
             if (ni==nodes.end()) {
-            nodes[key] = val;
+                nodes[key] = val;
             // printf("[%d] key=%lu not found, adding %p\n", omp_get_thread_num(), key, this);
             } else {
                 ni->second.rlist.splice(ni->second.rlist.begin(), val.rlist);
@@ -287,7 +311,7 @@ class STG {
             STG_EVal_t& val = it->second;
             auto ei = edges.find(key);
             if (ei==edges.end()) {
-            edges[key] = val;
+                edges[key] = val;
             } else {
                 ei->second.rlist.splice(ei->second.rlist.begin(), val.rlist);
             }
@@ -302,7 +326,8 @@ class STG {
     std::unordered_map<uint64_t/*request*/, record_comm_async_t*> waiting;
   private:
     STG_Key_t last;
-    record_t* last_r;
+    bool last_r_cached;
+    std::pair<uint64_t/*ts exit cache*/,std::pair<uint64_t,uint64_t>/*counter cache*/> last_r;
     uint64_t overlap_wait_threshold;
     std::vector<_var_record_async_comm*> async_comms;
 };
@@ -312,6 +337,10 @@ class STG {
 
 bool compareIns (const VarianceMap::CalcVarianceRecord* r1, const VarianceMap::CalcVarianceRecord* r2) {
     return r1->count < r2->count;
+}
+
+bool compareIns_opt2 (const VarianceMap::CalcVarianceRecord* r1, const VarianceMap::CalcVarianceRecord* r2) {
+    return r1->count_opt_2 < r2->count_opt_2;
 }
 
 template<typename K, typename V>
@@ -350,11 +379,12 @@ enum PROB_STAT_T {
     LAST_NUM
 };
 
-VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection& bt_collection, RecordTraceExtCollection& rte_collection, const std::string &ref_metric, bool enable_async_comm) {
+VarianceMap::VarianceMap(RankMetaCollection& metas, RecordTraceCollection& collection, BacktraceCollection& bt_collection, RankExtRecordTraceCollection& etraces_collection, StringSectionCollection& string_sections, const std::string &ref_metric, const std::string &ref_metric_opt, bool enable_async_comm, bool enable_warning) {
     if (enable_async_comm) {
         printf("Enable asynchronized communication event probe detection\n");
     }
     _ref_metric = ref_metric;
+    bool enable_opt = false;
     /* construct global STG */
     double ts,te;
     ts = omp_get_wtime();
@@ -368,10 +398,55 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
     std::set<jsi::variance::STG_Key_t>& key_set = lks_ptr[0];
     std::set<jsi::variance::STG_Edge_t>& edge_set = les_ptr[0];
     jsi::variance::STG& stg = stg_local_ptr[0];
+
+    std::unordered_map<int, std::unordered_map<int, std::vector<std::pair<uint64_t, uint64_t> >* >* > rank2cidmap;
     double tot = 0;
     double mpi_time = 0;
     double calc_time = 0;
+    double gpu_time = 0;
     const uint64_t mhz = get_tsc_freq_mhz();
+
+    enable_accl = false;
+    MetaDataMap::MetaValue_t* t;
+    std::unordered_map<std::string, MetaDataMap *> tmp_metaMap;
+    for (auto meta_it = metas.begin(); meta_it != metas.end(); ++meta_it) {
+        tmp_metaMap = meta_it->second->getMetaMap();
+        if (tmp_metaMap.contains("ACCL TRACE META")) {
+            enable_accl = true;
+            break;
+        }
+    }
+
+    // currently, only matrix has device-level pmu events
+    int dev_pmu_num;
+    const char* dev_event_str;
+    bool is_matrix;
+    const char* dev_type;
+
+    if (enable_accl) {
+        auto accl_trace_meta_map = tmp_metaMap.at("ACCL TRACE META");
+        accl_trace_meta_map->get("ACCL_DEVICE_TYPE", &t);
+        dev_type = t->ptr;
+        if (std::string(dev_type).substr(0, 6) == "MATRIX") {
+            accl_trace_meta_map->get("ACCL_PMU_NUM_EVENTS", &t);
+            dev_pmu_num = t->i32;
+            accl_trace_meta_map->get("ACCL_PMU_EVENT_LIST", &t);
+            dev_event_str = t->ptr;
+            is_matrix = true;
+        } else {
+            dev_pmu_num = 0;
+            dev_event_str = nullptr;
+            is_matrix = false;
+        }
+        JSI_INFO("ACCL COLLECTION DETECTED\n");
+    } else {
+        dev_type = "";
+        dev_pmu_num = 0;
+        dev_event_str = nullptr;
+        is_matrix = false;
+        JSI_WARN("No ACCL collection enabled. Skip ACCL\n");
+    }
+
     //for (auto it = collection.begin(), ie = collection.end(); it != ie; ++it) {
     #pragma omp parallel
     {
@@ -387,49 +462,132 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
     #pragma omp for
     for (int i=0; i<n; ++i) {
         // extract info
-        int rank = collection_vec[i].first;
+        auto id = collection_vec[i].first;
         RecordTrace& rtrace = *(collection_vec[i].second);
-        //int rank = it->first;
+        int rank = rtrace.rank();
         //RecordTrace& rtrace = *(it->second);
-        BacktraceTree* bt = bt_collection[rank];
+        BacktraceTree* bt = bt_collection[id];
 
         // printf("Rank %d offset %lu\n", rank, rtrace.offset);
 
         size_t num_events = rtrace.num_pmu_events();
-        int tot_ins_counter_idx;
-        for (tot_ins_counter_idx = 0; tot_ins_counter_idx < num_events; tot_ins_counter_idx++) {
-            auto& event_name = rtrace.get_pmu_event_name(tot_ins_counter_idx);
+        int tot_ins_counter_idx=-1;
+        int opt_counter_idx=-1;
+        for (int idx = 0; idx < num_events; idx++) {
+            auto& event_name = rtrace.get_pmu_event_name(idx);
             if (event_name == ref_metric) {
-                break;
+                tot_ins_counter_idx = idx;
+            } else if (event_name == ref_metric_opt) {
+                opt_counter_idx = idx;
+                enable_opt = true;
             }
         }
-        if (tot_ins_counter_idx == num_events) {
+        if (tot_ins_counter_idx<0) {
             JSI_WARN("No %s event counter collected on rank %d. Skipping this rank...\n",
                      ref_metric.c_str(), rank);
+            continue;
+        }
+        if (enable_opt && opt_counter_idx<0) {
+            JSI_WARN("No %s event counter collected on rank %d. Skipping this rank...\n",
+                     ref_metric_opt.c_str(), rank);
             continue;
         }
 
         VarianceData* vdata = new VarianceData;
         vdata->offset = rtrace.offset;
-        {
-            RecordTraceExt* rte = rte_collection[rank];
-            if (rte) {
-                RecordTraceExtIterator rit = rte->begin();
-                if (rit.valid()) {
-                    auto era = (ext_record_accl*)rit.get();
-                    vdata->gpu_offset = era->begin_ns;
-                }
-                enable_accl = true;
-            } else {
-                enable_accl = false;
-            }
+        /* No need */
+        vdata->gpu_offset = 0;
+
+        // query for the etraces for this rank
+        auto& etraces = etraces_collection[rank];
+
+        if (etraces.empty()) {
+            enable_accl = false;
         }
-        // printf("rank=%d, offset=%ld, start=%ld, start-offset=%ld\n", rank, rtrace.offset, rtrace.find(JSI_PROCESS_START, true/*ignore zoom*/).val()->timestamps.enter, rtrace.find(JSI_PROCESS_START, true/*ignore zoom*/).val()->timestamps.enter-rtrace.offset);
+        if (enable_accl) {
+            vdata->gpu_offset = 0;
+            std::unordered_map<int, std::vector<std::pair<uint64_t, uint64_t> >* >* p_cid2reclist;
+            bool try_cache;
+            #pragma omp critical
+            {
+                if (rank2cidmap.find(rank)==rank2cidmap.end()) {
+                    p_cid2reclist = new std::unordered_map<int, std::vector<std::pair<uint64_t, uint64_t> >* >();
+                    rank2cidmap[rank] = p_cid2reclist;
+                    try_cache = true;
+                    JSI_INFO("Loading ACCL & contruct cid map cache for rank [%d]\n", rank);
+                } else {
+                    try_cache = false;
+                    JSI_INFO("ACCL cid map Already Cached for rank [%d]\n", rank);
+                }
+            }
+            if (try_cache) {
+                if (etraces.size()>1) {
+                    JSI_INFO("Multiple etraces for rank %d detected, use the first one [legency].\n", rank);
+                }
+                auto& etrace = etraces[0];
+                // iterate all device cores trace start timestamps 
+                auto& cid2reclist = (*p_cid2reclist);
+                for(auto& it: etrace->getIteratorList()) {
+                    uint64_t off=UINT64_MAX;
+                    uint64_t last=0;
+                    JSI_INFO(">>> ACCL LOADING: RANK=%d, ID=%d\n", rank, it.id);
+                    // if (it.begin_iter!=it.end_iter) {
+                    //     auto p_accl_trace = it.begin_iter.get();
+                    //     AcclRecordTrace accl_record_trace(p_accl_trace, dev_pmu_num, it.begin_iter.record_size(), dev_event_str, dev_type, string_sections[id]);
+                    //     off = accl_record_trace.begin().get_begin_ns();
+                    //     // JSI_WARN("==============> BEGIN EVENT INFO (off=%ld) =>\n%s\n=======================================", off, accl_record_trace.begin().to_string().c_str());
+                    // }
+                    if (std::string(dev_type).substr(0, 6) == "MATRIX") {
+                        off = 0;
+                    } else {
+                        for(auto outer_it = it.begin_iter; outer_it!=it.end_iter; ++outer_it) {
+                            auto rec = outer_it.get();
+                            AcclRecordTrace accl_record_trace(rec, dev_pmu_num, outer_it.record_size(), dev_event_str, dev_type, string_sections[id]);
+                            off = min(off, accl_record_trace.begin().get_begin_ns());
+                        }
+                    }
+                    for(auto outer_it = it.begin_iter; outer_it!=it.end_iter; ++outer_it) {
+                        auto rec = outer_it.get();
+                        AcclRecordTrace accl_record_trace(rec, dev_pmu_num, outer_it.record_size(), dev_event_str, dev_type, string_sections[id]);
+                        for(auto ait = accl_record_trace.begin(); ait!=accl_record_trace.end(); ++ait) {
+                            auto cid = ait.get_cid();
+                            auto p_reclist_it = p_cid2reclist->find(cid);
+                            std::vector<std::pair<uint64_t, uint64_t> >* p_reclist;
+                            if(p_reclist_it == p_cid2reclist->end()) {
+                                p_reclist = new std::vector<std::pair<uint64_t, uint64_t> >();
+                                (*p_cid2reclist)[cid] = p_reclist;
+                            } else {
+                                p_reclist = p_reclist_it->second;
+                            }
+                            uint64_t beg = ait.get_begin_ns() - off;
+                            uint64_t end = ait.get_end_ns() - off;
+                            if (ait.get_begin_ns()<off) {
+                                JSI_WARN("Curious timestamp data: beg (%lu)< off (%lu)\n", ait.get_begin_ns(), off);
+                                JSI_WARN("==============> Invalid EVENT INFO =>\n%s\n=======================================", ait.to_string().c_str());
+                                continue;
+                            }
+                            if (end<=beg) {
+                                JSI_WARN("Ignore event due to invalid timestamp relationship: end (%lu)<=beg (%lu)\n", end, beg);
+                                JSI_WARN("==============> Invalid EVENT INFO =>\n%s\n=======================================", ait.to_string().c_str());
+                                continue;
+                            }
+                            p_reclist->push_back(std::make_pair(beg, end));
+                            #pragma omp atomic
+                            gpu_time += (end - beg)/1000000000.0 /* nsec->sec */;
+                            last = max(last, end);
+                        }
+                    }
+                }
+            } // end if try_cache
+        }
+        // printf("rank=%d, size=%ld, offset=%ld, start=%ld, start-offset=%ld\n", rank, rtrace.size(), rtrace.offset, rtrace.find(JSI_PROCESS_START, true/*ignore zoom*/).val()->timestamps.enter, rtrace.find(JSI_PROCESS_START, true/*ignore zoom*/).val()->timestamps.enter-rtrace.offset);
+        // STG construction
         stg_local_ptr[tid].reset();
         stg_local_ptr[tid].enable_async_comm = enable_async_comm;
         int cnt = 0;
         uint64_t ts = 0;
-        record_t* last_r = 0;
+        record_t last_r;
+        bool last_r_cached = false;
         for (auto ri = rtrace.begin(), re = rtrace.end(); ri != re; ri = ri.next()) {
             record_t* r = ri.val();
             // printf("==== [Rank %d] %d: %d, %s\n", rank, cnt++, r->MsgType, RecordHelper::dump_string(r).c_str());
@@ -437,27 +595,29 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
             if(RecordHelper::is_mpi(r)) {
                 __mpi_time += tsc_duration_seconds((r->timestamps.exit) - (r->timestamps.enter), mhz);
             }
-            if(RecordHelper::is_mpi(r) || RecordHelper::is_function(r) || RecordHelper::is_accl(r)) { 
-                /* r may be a event within last_r, ignore it */
-                if (RecordHelper::is_contain(r, last_r)) {
-                    continue;
-                }
-                jsi::variance::STG_Edge_t e;
-                jsi::variance::STG_Key_t key = stg_local_ptr[tid].transfer_to(rank, r, bt, tot_ins_counter_idx, num_events, e, vdata);
-                lks_ptr[tid].emplace(key);
-                les_ptr[tid].emplace(e);
-                // accumulate calc time (edges)
-                if (last_r) {
-                    __calc_time += tsc_duration_seconds((r->timestamps.enter) - (last_r->timestamps.exit), mhz);
-                }
-                last_r = r;
-            }
-            else if(RecordHelper::is_process_start(r)) {
+            if(RecordHelper::is_process_start(r)) {
                 ts = r->timestamps.enter;
-                last_r = r;
+                last_r = *r;
+                last_r_cached = true;
             }
             else if(RecordHelper::is_process_exit(r)) {
                 __total_time += tsc_duration_seconds(r->timestamps.enter-ts, mhz);
+            }
+            else {
+                /* r may be a event within last_r, ignore it */
+                if (RecordHelper::is_contain(r, &last_r)) {
+                    continue;
+                }
+                jsi::variance::STG_Edge_t e;
+                jsi::variance::STG_Key_t key = stg_local_ptr[tid].transfer_to(rank, r, bt, tot_ins_counter_idx, opt_counter_idx, num_events, e, vdata);
+                lks_ptr[tid].emplace(key);
+                les_ptr[tid].emplace(e);
+                // accumulate calc time (edges)
+                if (last_r_cached) {
+                    __calc_time += tsc_duration_seconds((r->timestamps.enter) - (last_r.timestamps.exit), mhz);
+                }
+                last_r = *r;
+                last_r_cached = true;
             }
         }
         stg_local_ptr[tid].waiting.clear();
@@ -497,17 +657,23 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
     printf("Stage 1: %lf sec\n", te-ts);
     printf("Key Set Size: %lu\n", key_set.size());
     printf("Edge Set Size: %lu\n", edge_set.size());
-    ts = omp_get_wtime();
-    double gpu_time = 0;
+
+    printf("============== profile statistics ===============\n");
+    printf("## Total time elasped (all processes):                  %lf\n", tot);
     if (enable_accl) {
-        for (auto it=rte_collection.begin(); it!=rte_collection.end(); ++it) {
-            RecordTraceExt* rte = it->second;
-            for(RecordTraceExtIterator rit = rte->begin(); rit.valid(); rit.next()) {
-                ext_record_accl* era = (ext_record_accl*)rit.get();
-                gpu_time += (era->end_ns - era->begin_ns)/1000000000.0 /* nsec->sec */;
-            }
-        }
+        printf("## GPU activity in trace total time elasped (all proc): %lf (%.2lf%%)\n", gpu_time, 100*gpu_time/tot);
     }
+    printf("=================================================\n");
+    ts = omp_get_wtime();
+    // if (enable_accl) {
+    //     for (auto it=rte_collection.begin(); it!=rte_collection.end(); ++it) {
+    //         RecordTraceExt* rte = it->second;
+    //         for(RecordTraceExtIterator rit = rte->begin(); rit.valid(); rit.next()) {
+    //             ext_record_accl* era = (ext_record_accl*)rit.get();
+    //             gpu_time += (era->end_ns - era->begin_ns)/1000000000.0 /* nsec->sec */;
+    //         }
+    //     }
+    // }
     // clustering and normalization within each STG
     // Communications
     auto key_vec = setToVector(key_set);
@@ -529,21 +695,24 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
     // unordered_map<string /*encoding*/, unordered_map<uint64_t /*us*/, SmoothData_t > > smooth_map;
     unordered_map<string /*encoding*/, SmoothData_t > smooth_map;
     //for (auto ki = key_set.begin(), ke = key_set.end(); ki!=ke; ++ki) {
-    #pragma omp for nowait
+    #pragma omp for nowait schedule(dynamic)
     for (int i=0; i<nkeys; ++i) {
         const jsi::variance::STG_Key_t& key = key_vec[i];
         if(stg.nodes.find(key)==stg.nodes.end()) {
             JSI_ERROR("Key %lu not found in STG!\n", key);
         }
         std::list<VarianceMap::CommVarianceRecord*>& rlist = stg.nodes[key].rlist;
-        if (rlist.size()>0) {
-            JSI_INFO("[%d] key=%lu, #rlist=%lu, MsgType=%s\n", omp_get_thread_num(), key, rlist.size(), RecordHelper::get_record_name((*rlist.begin())->data).c_str());
-        } else {
-            JSI_INFO("[%d] key=%lu, #rlist=%lu\n", omp_get_thread_num(), key, rlist.size());
+        if (enable_warning) {
+            if (rlist.size()>0) {
+                JSI_INFO("[%d] key=%lu, #rlist=%lu, MsgType=%s\n", omp_get_thread_num(), key, rlist.size(), RecordHelper::get_record_name((*rlist.begin())->data).c_str());
+            } else {
+                JSI_INFO("[%d] key=%lu, #rlist=%lu\n", omp_get_thread_num(), key, rlist.size());
+            }
         }
         {
             uint8_t* begin = 0;
             int counter = 0;
+            string base_enc = string(":") + to_string(key);
             for(auto it=rlist.begin(), ie=rlist.end(); it!=ie; ++it) {
                 int rank = (*it)->rank;
                 record_t* r = (*it)->data;
@@ -558,72 +727,104 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
                         enter_us = tsc_duration_us(r->timestamps.enter, mhz);
                 } else if( RecordHelper::is_event(r, event_MPI_Wait) ||
                            RecordHelper::is_event(r, event_MPI_Waitall)) {
+                        // for MPI_Wait, transformed record is encoded in enter
                         enc = jsi::variance::encode_comm((jsi::variance::_var_record_async_comm*)r);
                         dur = (r->timestamps.exit) - (r->timestamps.enter);
                         enter_us = tsc_duration_us(r->timestamps.enter, mhz);
                 }
                 // ACCL (GPU) Async events
-                else if (enable_accl && JSI_ACCL_EVENT_IS_MEMCPY(r->MsgType) || JSI_ACCL_EVENT_IS_MEMCPY_ASYNC(r->MsgType)) {
+                else if (enable_accl && RecordHelper::is_accl_memcpy_activity(r)) {
                         record_activity_memcpy_t* rec = (record_activity_memcpy_t*)r;
                         enc = jsi::variance::encode_memcpy(rec);
                         int cid = rec->correlation_id;
-                        if(rte_collection.find(rank)==rte_collection.end()) {
+                        auto p_cidmap = rank2cidmap.find(rank);
+                        if(p_cidmap==rank2cidmap.end()) {
                             JSI_ERROR("ACCL EVENT TRACE not found for rank %d\n", rank);
                         }
-                        RecordTraceExt* rte = rte_collection[rank];
-                        bool matched = false;
-                        ext_record_accl* era;
-                        #pragma omp critical
-                        for(RecordTraceExtIterator rit = rte->begin(); rit.valid() && !matched; rit.next()) {
-                            era = (ext_record_accl*)rit.get();
-                            if (era->correlation_id == cid) {
-                                enter_us = era->begin_ns / (double)1000;
-                                dur = era->end_ns - era->begin_ns;
-                                gmt+= dur / 1000000000.0 /* nsec->sec */;
-                                matched = true;
+                        auto p_reclist = p_cidmap->second->find(cid);
+                        if(p_reclist!=p_cidmap->second->end()) {
+                            auto& _reclist = *(p_reclist->second);
+                            if(_reclist.size()>0) {
+                                uint64_t enter_ns = _reclist[0].first;
+                                uint64_t exit_ns  = _reclist[0].second;
+                                for(size_t i=0; i<_reclist.size(); ++i) {
+                                    enter_ns = min(enter_ns, _reclist[i].first);
+                                    exit_ns = min(exit_ns, _reclist[i].second);
+                                }
+                                if (std::string(dev_type).substr(0, 6) == "MATRIX") {
+                                    auto _kernel_start_ns = tsc_duration_ns(rec->record.timestamps.enter-_var_map[rank]->offset, mhz);
+                                    enter_ns += _kernel_start_ns;
+                                    exit_ns += _kernel_start_ns;
+                                }
+                                enter_us = enter_ns / (double)1000;
+                                dur = exit_ns - enter_ns;
+                                auto dur_sec = dur / 1000000000.0 /* nsec->sec */;
+                                #pragma omp atomic
+                                gmt+= dur_sec;
                                 AcclVarianceRecord* avr = reinterpret_cast<AcclVarianceRecord*>(*it);
-                                avr->accl_enter = era->begin_ns;
-                                avr->accl_exit = era->end_ns;
-                                break;
+                                avr->accl_enter = enter_ns;
+                                avr->accl_exit = exit_ns;
+                            } else {
+                                if (enable_warning) {
+                                    JSI_WARN("[MEMCPY] Ignore event with empty record list: correlation id %d\n", cid);
+                                }
+                                dur = 0;
                             }
-                        }
-                        if (!matched) {
-                            JSI_WARN("[MEMCPY] Ignore event with unmached correlation id %d\n", cid);
+                        } else {
+                            if (enable_warning) {
+                                JSI_WARN("[MEMCPY] Ignore event with unmatched correlation id %d\n", cid);
+                            }
                             dur = 0;
                         }
                 }
                 // ACCL (GPU) Async Calc events
-                else if(enable_accl && JSI_ACCL_EVENT_IS_LAUNCH(r->MsgType)) {
-                        record_activity_launch_t* rec = (record_activity_launch_t*)r;
-                        enc = jsi::variance::encode_launch(rec);
+                else if(enable_accl && RecordHelper::is_kernel_launch(r)) {
+                        record_activity_t* rec = (record_activity_t*)r;
+                        enc = jsi::variance::encode_launch(r);
                         int cid = rec->correlation_id;
-                        if(rte_collection.find(rank)==rte_collection.end()) {
+                        auto p_cidmap = rank2cidmap.find(rank);
+                        if(p_cidmap==rank2cidmap.end()) {
                             JSI_ERROR("ACCL EVENT TRACE not found for rank %d\n", rank);
                         }
-                        RecordTraceExt* rte = rte_collection[rank];
-                        bool matched = false;
-                        ext_record_accl* era;
-                        #pragma omp critical
-                        for(RecordTraceExtIterator rit = rte->begin(); rit.valid() && !matched; rit.next()) {
-                            era = (ext_record_accl*)rit.get();
-                            if (era->correlation_id == cid) {
-                                enter_us = era->begin_ns / (double)1000;
-                                dur = era->end_ns - era->begin_ns;
-                                gct+= dur / 1000000000.0 /* nsec->sec */;
-                                matched = true;
+                        auto p_reclist = p_cidmap->second->find(cid);
+                        if(p_reclist!=p_cidmap->second->end()) {
+                            auto& _reclist = *(p_reclist->second);
+                            if(_reclist.size()>0) {
+                                uint64_t enter_ns = _reclist[0].first;
+                                uint64_t exit_ns  = _reclist[0].second;
+                                for(size_t i=0; i<_reclist.size(); ++i) {
+                                    enter_ns = min(enter_ns, _reclist[i].first);
+                                    exit_ns = min(exit_ns, _reclist[i].second);
+                                }
+                                if (std::string(dev_type).substr(0, 6) == "MATRIX") {
+                                    auto _kernel_start_ns = tsc_duration_ns(rec->record.timestamps.enter-_var_map[rank]->offset, mhz);
+                                    enter_ns += _kernel_start_ns;
+                                    exit_ns += _kernel_start_ns;
+                                }
+                                enter_us = enter_ns / (double)1000;
+                                dur = exit_ns - enter_ns;
+                                auto dur_sec = dur / 1000000000.0; /* nsec->sec */;
+                                #pragma omp atomic
+                                gct+= dur_sec; 
                                 AcclVarianceRecord* avr = reinterpret_cast<AcclVarianceRecord*>(*it);
-                                avr->accl_enter = era->begin_ns;
-                                avr->accl_exit = era->end_ns;
-                                break;
+                                avr->accl_enter = enter_ns;
+                                avr->accl_exit = exit_ns;
+                            } else {
+                                if (enable_warning) {
+                                    JSI_WARN("[LAUNCH] Ignore event with empty record list: correlation id %d\n", cid);
+                                }
+                                dur = 0;
                             }
-                        }
-                        if (!matched) {
-                            JSI_WARN("[LAUNCH] Ignore event with unmached correlation id %d\n", cid);
+                        } else {
+                            if (enable_warning) {
+                                JSI_WARN("[LAUNCH] Ignore event with unmatched correlation id %d\n", cid);
+                            }
                             dur = 0;
                         }
                 }
                 if (!enc.empty() && dur) {
                     (*it)->variance = dur;
+                    enc += base_enc;
                     auto si = smooth_map.find(enc);
                     if(si==smooth_map.end()) {
                         smooth_map[enc] = {dur, 1, {*it}};
@@ -660,7 +861,10 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
                             if(prob_cnt.find(MOTHER) == prob_cnt.end()) prob_cnt[MOTHER] = 1;
                             else                                        prob_cnt[MOTHER] += 1;
                         }
-                        __pmt += si->second.dur / 1000000000.0 /*usec->sec*/;
+                        // __pmt += si->second.dur / 1000000000.0 /*usec->sec*/;
+                        for(auto ri=si->second.rlist.begin(), re=si->second.rlist.end(); ri!=re; ++ri) {
+                            __pmt += (*ri)->variance / 1000000000.0 /*usec->sec*/;
+                        }
                     } else if (enc.c_str()[0]=='A') {
                         if (si->second.dur < 100) {
                             if(prob_cnt.find(A100US) == prob_cnt.end()) prob_cnt[A100US] = 1;
@@ -675,27 +879,38 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
                             if(prob_cnt.find(AOTHER) == prob_cnt.end()) prob_cnt[AOTHER] = 1;
                             else                                        prob_cnt[AOTHER] += 1;
                         }
-                        __pct += si->second.dur / 1000000000.0 /*usec->sec*/;
+                        // __pct += si->second.dur / 1000000000.0 /*usec->sec*/;
+                        for(auto ri=si->second.rlist.begin(), re=si->second.rlist.end(); ri!=re; ++ri) {
+                            __pct += (*ri)->variance / 1000000000.0 /*usec->sec*/;
+                        }
                     } else {
                         double t = tsc_duration_us(si->second.dur, mhz);
                         if (t < 100) {
-                            if(prob_cnt.find(M100US) == prob_cnt.end()) prob_cnt[M100US] = 1;
-                            else                                        prob_cnt[M100US] += 1;
+                            if(prob_cnt.find(C100US) == prob_cnt.end()) prob_cnt[C100US] = 1;
+                            else                                        prob_cnt[C100US] += 1;
                         } else if (t < 10000) {
-                            if(prob_cnt.find(M10MS) == prob_cnt.end())  prob_cnt[M10MS] = 1;
-                            else                                        prob_cnt[M10MS] += 1;
+                            if(prob_cnt.find(C10MS) == prob_cnt.end())  prob_cnt[C10MS] = 1;
+                            else                                        prob_cnt[C10MS] += 1;
                         } else if (t < 1000000) {
-                            if(prob_cnt.find(M1S) == prob_cnt.end())    prob_cnt[M1S] = 1;
-                            else                                        prob_cnt[M1S] += 1;
+                            if(prob_cnt.find(C1S) == prob_cnt.end())    prob_cnt[C1S] = 1;
+                            else                                        prob_cnt[C1S] += 1;
                         } else {
-                            if(prob_cnt.find(MOTHER) == prob_cnt.end()) prob_cnt[MOTHER] = 1;
-                            else                                        prob_cnt[MOTHER] += 1;
+                            if(prob_cnt.find(COTHER) == prob_cnt.end()) prob_cnt[COTHER] = 1;
+                            else                                        prob_cnt[COTHER] += 1;
                         }
-                        __cpt += tsc_duration_seconds(si->second.dur, mhz);
+                        // __cpt += tsc_duration_seconds(si->second.dur, mhz);
+                        for(auto ri=si->second.rlist.begin(), re=si->second.rlist.end(); ri!=re; ++ri) {
+                            __cpt += tsc_duration_seconds((*ri)->variance, mhz);
+                        }
                     }
                     // communication variance
                     for(auto ri=si->second.rlist.begin(), re=si->second.rlist.end(); ri!=re; ++ri) {
+                        assert(b <= (*ri)->variance);
                         (*ri)->variance = b / (*ri)->variance;
+                    }
+                } else {
+                    for(auto ri=si->second.rlist.begin(), re=si->second.rlist.end(); ri!=re; ++ri) {
+                        (*ri)->variance = 1;
                     }
                 }
             }
@@ -713,7 +928,7 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
     uint64_t __calc_cnt[4] = {0};
     std::vector<VarianceMap::CalcVarianceRecord*> rlist_all;
     //for (auto ki = edge_set.begin(), ke = edge_set.end(); ki!=ke; ++ki) {
-    #pragma omp for nowait
+    #pragma omp for nowait schedule(dynamic)
     for (int i=0; i<nedges; ++i) {
         const jsi::variance::STG_Edge_t& key = edge_vec[i];
 	    {
@@ -734,41 +949,63 @@ VarianceMap::VarianceMap(RecordTraceCollection& collection, BacktraceCollection&
         int cnt = 0;
         for (int i=0; i<rlist_all.size();) {
             uint64_t ref_ins = VAR_CLUSTER_RATIO*rlist_all[i]->count;
-            int n=i+1;
-            double worst = (double)(CalcVarianceRecordGetExitTS(rlist_all[i]) - CalcVarianceRecordGetEnterTS(rlist_all[i]));
-            double best = worst;
-            rlist_all[i]->variance = best;
-            while(n<rlist_all.size()) {
-                uint64_t tot_ins = rlist_all[n]->count;
+            int c2_s=i;
+            int c2_e=i+1;
+            while(c2_e<rlist_all.size()) {
+                uint64_t tot_ins = rlist_all[c2_e]->count;
                 if(tot_ins > ref_ins) break;
-                double dur = (double)(CalcVarianceRecordGetExitTS(rlist_all[n]) - CalcVarianceRecordGetEnterTS(rlist_all[n]));
-                rlist_all[n]->variance = dur;
-                if(dur<best) { best = dur; }
-                if(dur>worst) { worst = dur; }
-                ++n;
+                ++c2_e;
             }
-	        if (n-i<=LOW_CNT_THRESHOLD) {
-		        // Ignore infrequent variance probes
-                for(;i<n;++i) {
+            if (c2_e-c2_s<=LOW_CNT_THRESHOLD) {
+                // Ignore infrequent variance probes
+                for(;i<c2_e;++i) {
                     rlist_all[i]->variance = 1;
                 }
-	        } else {
-                JSI_INFO("[CLUSTER %d] %d-%d (num=%d), ref_ins_low=%ld, ref_ins=%ld, best=%lf, worst=%lf, ratio=%lf\n", cnt++, i, n, n-i, rlist_all[i]->count, ref_ins, best, worst, best/worst);
-                for(;i<n;++i) {
-                    double t = tsc_duration_us(rlist_all[i]->variance, mhz);
-                    if (t < 100) {
-                        __calc_cnt[0]++;
-                    } else if (t < 10000) {
-                        __calc_cnt[1]++;
-                    } else if (t < 1000000) {
-                        __calc_cnt[2]++;
-                    } else {
-                        __calc_cnt[3]++;
-                    }
-                    __valid_prob_time += tsc_duration_seconds(rlist_all[i]->variance, mhz);
-                    rlist_all[i]->variance = best / rlist_all[i]->variance;
+                continue;
+            }
+            
+            if(enable_opt) {
+                std::sort(std::next(rlist_all.begin(),c2_s), std::next(rlist_all.begin(),c2_e), compareIns_opt2);
+            }
+            for(; i<c2_e; ++i) {
+                uint64_t ref_opt2 = enable_opt ? VAR_CLUSTER_RATIO*rlist_all[i]->count_opt_2 : (uint64_t)(-1);
+                int n=i+1;
+                double worst = (double)(CalcVarianceRecordGetExitTS(rlist_all[i]) - CalcVarianceRecordGetEnterTS(rlist_all[i]));
+                double best = worst;
+                rlist_all[i]->variance = best;
+                while(n<c2_e) {
+                    uint64_t tot_opt2 = rlist_all[n]->count_opt_2;
+                    if(tot_opt2 > ref_opt2) break;
+                    double dur = (double)(CalcVarianceRecordGetExitTS(rlist_all[n]) - CalcVarianceRecordGetEnterTS(rlist_all[n]));
+                    rlist_all[n]->variance = dur;
+                    if(dur<best) { best = dur; }
+                    if(dur>worst) { worst = dur; }
+                    ++n;
                 }
-	        }
+                if (n-i<=LOW_CNT_THRESHOLD) {
+                    // Ignore infrequent variance probes
+                    for(;i<n;++i) {
+                        rlist_all[i]->variance = 1;
+                    }
+                } else {
+                    // JSI_INFO("[CLUSTER %d] %d-%d (num=%d), ref_ins_low=%ld, ref_ins=%ld, best=%lf, worst=%lf, ratio=%lf\n", cnt++, i, n, n-i, rlist_all[i]->count, ref_ins, best, worst, best/worst);
+                    for(;i<n;++i) {
+                        double t = tsc_duration_us(rlist_all[i]->variance, mhz);
+                        if (t < 100) {
+                            __calc_cnt[0]++;
+                        } else if (t < 10000) {
+                            __calc_cnt[1]++;
+                        } else if (t < 1000000) {
+                            __calc_cnt[2]++;
+                        } else {
+                            __calc_cnt[3]++;
+                        }
+                        __valid_prob_time += tsc_duration_seconds(rlist_all[i]->variance, mhz);
+                        assert(best <= rlist_all[i]->variance);
+                        rlist_all[i]->variance = best / rlist_all[i]->variance;
+                    }
+                }
+            }
         }
         rlist_all.clear();
     }
@@ -832,7 +1069,7 @@ void VarianceMap::dump_accl_memcpy_csv(const char* filename) {
     auto var_vec = mapToVector(_var_map);
     int nvar = var_vec.size();
     printf("DUMP COMM: nvar = %d\n", nvar);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         ostringstream sout;
@@ -867,7 +1104,7 @@ void VarianceMap::dump_accl_calc_csv(const char* filename) {
     auto var_vec = mapToVector(_var_map);
     int nvar = var_vec.size();
     printf("DUMP COMM: nvar = %d\n", nvar);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         ostringstream sout;
@@ -902,7 +1139,7 @@ void VarianceMap::dump_comm_csv(const char* filename) {
     int nvar = var_vec.size();
     printf("DUMP COMM: nvar = %d\n", nvar);
     // for (auto it = _var_map.begin(), ie = _var_map.end(); it != ie; ++it) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         //fprintf(fp, "%d", rank);
@@ -943,7 +1180,7 @@ void VarianceMap::dump_calc_csv(const char* filename) {
     int nvar = var_vec.size();
     printf("DUMP CALC: nvar = %d\n", nvar);
     // for (auto it = _var_map.begin(), ie = _var_map.end(); it != ie; ++it) {
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         //fprintf(fp, "%d", rank);
@@ -958,8 +1195,8 @@ void VarianceMap::dump_calc_csv(const char* filename) {
                 continue;
                 // printf("???????????%d\n",i);
             }
-            sout << "," << tsc_duration_ns(CalcVarianceRecordGetEnterTS(calc_vars[i])-offset, mhz)
-		 << "," << tsc_duration_ns(CalcVarianceRecordGetExitTS(calc_vars[i])-offset, mhz)
+            sout << "," << tsc_duration_ms(CalcVarianceRecordGetEnterTS(calc_vars[i])-offset, mhz)
+		 << "," << tsc_duration_ms(CalcVarianceRecordGetExitTS(calc_vars[i])-offset, mhz)
 		 << "," << calc_vars[i]->variance;
             // fprintf(fp, ",%lf,%lf,%lf", tsc_duration_ns(calc_vars[i]->ts_enter-offset, mhz),
             //         tsc_duration_ns(calc_vars[i]->ts_exit-offset, mhz), calc_vars[i]->variance);
@@ -990,7 +1227,7 @@ void VarianceMap::dump_comm_heatmap(const char* filename, uint64_t resolution_ms
     auto var_vec = mapToVector(_var_map);
     int nvar = var_vec.size();
     printf("DUMP COMM heatmap: nvar = %d, resolution = %lu ms\n", nvar, resolution_ms);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         ostringstream sout;
@@ -1057,7 +1294,7 @@ void VarianceMap::dump_calc_heatmap(const char* filename, uint64_t resolution_ms
     auto var_vec = mapToVector(_var_map);
     int nvar = var_vec.size();
     printf("DUMP CALC heatmap: nvar = %d, resolution = %lu ms\n", nvar, resolution_ms);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         std::unordered_map<uint64_t/*derived from resolution*/, std::pair<double, int>> heatmap;
@@ -1113,7 +1350,7 @@ void VarianceMap::dump_accl_calc_heatmap(const char* filename, uint64_t resoluti
     auto var_vec = mapToVector(_var_map);
     int nvar = var_vec.size();
     printf("DUMP ACCL CALC heatmap: nvar = %d, resolution = %lu ms\n", nvar, resolution_ms);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         std::unordered_map<uint64_t/*derived from resolution*/, std::pair<double, int>> heatmap;
@@ -1171,7 +1408,7 @@ void VarianceMap::dump_accl_memcpy_heatmap(const char* filename, uint64_t resolu
     auto var_vec = mapToVector(_var_map);
     int nvar = var_vec.size();
     printf("DUMP ACCL MEMCPY heatmap: nvar = %d, resolution = %lu ms\n", nvar, resolution_ms);
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic)
     for (int i=0; i<nvar; ++i) {
         int rank = var_vec[i].first;
         std::unordered_map<uint64_t/*derived from resolution*/, std::pair<double, int>> heatmap;

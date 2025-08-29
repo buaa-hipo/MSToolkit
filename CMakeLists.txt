@@ -46,6 +46,7 @@ if (OS_TYPE MATCHES ".*ky.*")
   message(STATUS "Building for OS:kylin")
   add_compile_definitions(KYLIN)
 endif()
+add_compile_definitions(KYLIN)
 
 if (USE_ALLOCA)
   add_compile_definitions(USE_ALLOCA)
@@ -69,9 +70,27 @@ if (ARCH_HYGON_C86)
     add_compile_definitions(HYGON_C86)
 endif ()
 
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+if (USE_MATRIX)
+    add_compile_definitions(__MATRIX)
+endif ()
+
+# find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+find_package(LLVMOpenMP)
+if(LLVMOpenMP_FOUND)
+  message(STATUS "Found LLVMOpenMP")
+  add_compile_definitions(USING_OMPT)
+else()
+  message(STATUS "LLVMOpenMP not found")
+endif()
+
 # generate headers from scripts
-set(GENERATE_WRAPPER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_scripts/compile_type_defines.py")
+if(LLVMOpenMP_FOUND)
+    set(GENERATE_WRAPPER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_scripts/compile_type_defines.py")
+else()
+    set(GENERATE_WRAPPER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_scripts/compile_type_defines_noompt.py")
+endif()
 message(STATUS "Generating wrapper headers: ${GENERATE_WRAPPER_SCRIPT}")
 execute_process(
   COMMAND ${Python3_EXECUTABLE} ${GENERATE_WRAPPER_SCRIPT} --workdir=${CMAKE_CURRENT_SOURCE_DIR}/
@@ -87,15 +106,46 @@ else()
   message(STATUS "Wrapper Generate Success")
 endif()
 
-find_package(OTF2 REQUIRED)
-find_package(MPI REQUIRED)
+find_package(OTF2)
+# find_package(MPI QUIET)
+# if (NOT MPI_FOUND)
+#   find_path(MPI_INCLUDE_PATH
+#       NAMES mpi.h
+#       HINTS ENV C_INCLUDE_PATH
+#       DOC "Path to MPI include directory"
+#   )
+#   message(STATUS "MPI_INCLUDE_PATH is ${MPI_INCLUDE_PATH}")
+#   find_library(MPI_LIBRARIES
+#       NAMES mpi
+#       HINTS ENV LIBRARY_PATH
+#       DOC "Path to MPI C library"
+#   )
+#   message(STATUS "MPI_LIBRARIES is ${MPI_LIBRARIES}")
+# endif()
+
+find_path(MPI_INCLUDE_PATH
+    NAMES mpi.h
+    HINTS ENV C_INCLUDE_PATH
+    DOC "Path to MPI include directory"
+)
+
+message(STATUS "MPI_INCLUDE_PATH is ${MPI_INCLUDE_PATH}")
+
+find_library(MPI_LIBRARIES
+    NAMES mpi
+    HINTS ENV LIBRARY_PATH
+    DOC "Path to MPI C library"
+)
+
+message(STATUS "MPI_LIBRARIES is ${MPI_LIBRARIES}")
+
 # find_package(Dyninst REQUIRED)
 find_package(PAPI REQUIRED)
 find_package (LibElf REQUIRED)
 find_package (LibDwarf REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(Boost REQUIRED)
-find_package(LLVMOpenMP REQUIRED)
+# find_package(LLVMOpenMP REQUIRED)
 
 set(ENV{PKG_CONFIG_PATH} $prefix)
 find_package(PkgConfig)

@@ -13,6 +13,7 @@
 #include <memory>
 #include <unordered_map>
 #include <list>
+#include <set>
 #include "utils/safe.hpp"
 #include "utils/configuration.h"
 #include <sys/time.h>
@@ -65,7 +66,7 @@ void reset_signal_handler(int signum) {
         perror("sigaction");
     }
 }
-extern std::vector<pthread_t> threads;
+extern std::set<pthread_t>* threads;
 
 bool jsi_pmu_enabled = false;
 bool jsi_backtrace_enabled = false;
@@ -146,7 +147,7 @@ class PAPISampler {
         static void main_thread_timer_handler() 
         //static void main_thread_timer_handler(int signum)
         { 
-            for (auto thread: threads)
+            for (auto thread: *threads)
             {
                 pthread_kill(thread, SIG_THREAD_SAMPLING);
             }
@@ -231,12 +232,6 @@ void record_init_thread()
         backtrace_init_recording(backtrace_max_size);
     }
     globalPAPISampler = EnvConfigHelper::get_enabled("JSI_ENABLE_SAMPLING", false) ? new PAPISampler() : nullptr;
-    // RecordWriter::metaSectionStart("MPI_COMM_WORLD");
-    // RecordWriter::metaStore<int64_t>("MPI_COMM_WORLD", 0);
-    // RecordWriter::metaStore<int>("rank", _ConfigHelper::get_tid());
-    // RecordWriter::metaStore<int>("size", 0);
-    // RecordWriter::metaSectionEnd("MPI_COMM_WORLD");
-    // JSI_LOG(JSILOG_INFO, "[Record Writer] Child Thread :: init for tid=%d\n", _ConfigHelper::get_tid());
     struct sigaction sa_thread;
     sa_thread.sa_flags = 0;
     sa_thread.sa_handler = [](auto){jsi_thread_finalize();};
@@ -320,6 +315,8 @@ void recordWriterCacheInit() {
     _process_backtrace_dir = new std::unique_ptr<pse::ral::DirSectionInterface>();
     // jsi_thread_data_mark_initialized();
 
+    threads = new std::set<pthread_t>();
+
     RecordWriter::init();
 
     // JSI_LOG(JSILOG_INFO, "[Record Writer] Main Thread :: init for tid=%d\n", _ConfigHelper::get_tid());
@@ -351,9 +348,20 @@ void recordWriterCacheInit() {
 __attribute__((destructor (RECORD_FINI_PRIORITY)))
 void recordWriterCacheFinalize() {
     jsi_mark_unsafe_enter();
-    for (auto thread: threads)
+    for (auto thread: *threads)
     {
+        JSI_LOG(JSILOG_INFO, "have THREDID %p\n", thread);
+    }
+    for (auto thread: *threads)
+    {
+        JSI_LOG(JSILOG_INFO, "finalize THREDID %p\n", thread);
         pthread_kill(thread, SIG_THREAD_EXIT);
+    }
+    for (auto thread: *threads)
+    {
+        JSI_LOG(JSILOG_INFO, "waiting for THREDID %p to exit\n", thread);
+        pthread_join(thread, NULL);
+        JSI_LOG(JSILOG_INFO, "THREDID %p exited\n", thread);
     }
     // sleep(1);
     jsi_record_writer_fini_completed.store(1);
@@ -384,7 +392,7 @@ void recordWriterCacheFinalize() {
     }
 #endif
     auto& process_backtrace_dir = *(_process_backtrace_dir);
-    auto thread_backtrace_dir = process_backtrace_dir->openDirSection(_ConfigHelper::get_pid(), true);
+    //auto thread_backtrace_dir = process_backtrace_dir->openDirSection(_ConfigHelper::get_pid(), true);
     RecordWriter::metaSectionStart("FINALIZED");
     RecordWriter::metaStore("SUCCESS", 1);
     RecordWriter::metaSectionEnd("FINALIZED");
@@ -399,6 +407,7 @@ void recordWriterCacheFinalize() {
     JSI_LOG(JSILOG_INFO, "[Record Writer] Main Thread :: finalize for tid=%d\n", _ConfigHelper::get_tid());
 
     delete meta;
+    delete threads;
 }
 
 // // TODO: Implement Async IO

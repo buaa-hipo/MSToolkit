@@ -122,6 +122,45 @@ bool RecordTrace::zoom(uint64_t ts_s, uint64_t ts_e, uint64_t offset) {
     return false;
 }
 
+std::pair<RecordTraceIterator,RecordTraceIterator> RecordTrace::zoom_ts(int ts_id,uint64_t ts_s, uint64_t ts_e, uint64_t offset) {
+    if (ts_s > ts_e) {
+        printf("ts_s <= ts_e %d\n",ts_id);
+    }
+    RecordTraceIterator it = begin();
+    RecordTraceIterator newIt = RecordTraceIterator::invalid();
+    RecordTraceIterator newIe = RecordTraceIterator::invalid();
+    int iterNum = 0;
+    std::pair<RecordTraceIterator,RecordTraceIterator> zoom_pair;
+
+    while (it != global_end() && it.val_cache()->timestamps.enter - offset < ts_s) {
+        it = it.next();
+    }
+    if (it != global_end() && it.val_cache()->timestamps.enter - offset >= ts_s && it.val_cache()->timestamps.enter - offset < ts_e) {
+        newIt = it;
+        _start = iterNum;
+        while (it != global_end() && it.val_cache()->timestamps.enter - offset < ts_e) {
+            it = it.next();
+            iterNum++;
+        }
+        _end = iterNum;
+        newIe = it;
+        if (!RecordTraceIterator::is_invalid(newIt)) {
+            if (_model == SECTION_MODEL)
+            {
+                //printf("section_model zoom!!\n");
+                zoom_pair.first = newIt;
+                zoom_pair.second = newIe;
+            }
+            else{
+                zoom_pair.first = newIt;
+                zoom_pair.first = newIe;
+                //return true;
+            }
+        }
+    }
+    return zoom_pair;
+}
+
 // star
 // RecordTrace *RecordTrace::filter(int MsgType) {
 //     RecordTraceIterator it = begin();
@@ -255,7 +294,14 @@ void RecordReader::load_meta(std::unique_ptr<pse::ral::DirSectionInterface>& dir
     // metaMap.at("MPI_COMM_WORLD")->get("rank", &value_ranks);
     int rank = value_ranks->i32;
     if (metas.count(rank)!=0) {
-        JSI_ERROR("Multiple Meta with the same rank detected!");
+        std::string prev_id;
+        for(auto it=_id2rank.begin(); it!=_id2rank.end(); ++it) {
+            if(it->second==rank) {
+                prev_id = it->first;
+                break;
+            }
+        }
+        JSI_ERROR("Multiple Meta with the same rank %d detected (prev: %s, curr:%s)!", rank, prev_id.c_str(), (node_id + std::to_string(dir->self_desc())).c_str());
     }
     _id2rank[node_id + std::to_string(dir->self_desc())] = rank;
     metas[rank] = meta;
@@ -297,6 +343,7 @@ void RecordReader::load_trace(const char* path) {
 }
 
 void RecordReader::load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, const std::string& node_id, uint64_t pid) {
+    auto tid = dir->self_desc();
     auto rank = _id2rank.at(node_id + std::to_string(pid));
     auto generic_dir = dir->openDirSection(StaticSectionDesc::GENERIC_TRACE_SEC_ID, false);
     auto sampling_dir = dir->openDirSection(StaticSectionDesc::SAMPLING_TRACE_SEC_ID, false);
@@ -304,17 +351,35 @@ void RecordReader::load_trace(std::unique_ptr<pse::ral::DirSectionInterface>&& d
     auto thread_id = node_id + std::to_string(dir->self_desc());
     JSI_LOG(JSILOG_INFO, "tid : %d\n", dir->self_desc());
     
-    if (!_mpi_only && rank >= 0) {
-        // auto string_section = dir->openStringSection(StaticSectionDesc::COMMON_USE_STRING_SEC, false);
-        // _string_section_collection[rank] = string_section.release();
+    RankMetaCollection& metas = _meta_collection;
+    RecordMeta *meta = metas[rank];
+    auto &metaMap = meta->getMetaMap();
+
+    //! Accl trace is the only part that uses COMMON_USE_STRING_SEC for now.
+    if (metaMap.contains("ACCL TRACE META")) {
+        auto string_section = dir->openStringSection(StaticSectionDesc::COMMON_USE_STRING_SEC, false);
+        _string_section_collection[thread_id] = string_section.release();
     }
     
     if (rank!=BROKEN_TRACE_ID || (_mpi_only && rank>=0)) {
-        _record_collection[thread_id] = new RecordTrace(std::move(generic_dir), rank, true,
+        if (generic_dir->is_valid()) {
+            _record_collection[thread_id] = new RecordTrace(std::move(generic_dir), rank, true,
                                                    _pmu_event_list_collection[rank]);
-        _sampling_record_collection[thread_id] = new RecordTrace(std::move(sampling_dir), rank, true,
+            if (tid == pid)
+            {
+                _rank_record_collection[rank] = _record_collection[thread_id];
+            }
+        }
+        if (sampling_dir->is_valid()) {
+            _sampling_record_collection[thread_id] = new RecordTrace(std::move(sampling_dir), rank, true,
                                                             _pmu_event_list_collection[rank]);
-        _ext_record_collection[thread_id] = new ExtRecordTrace(std::move(ext_dir), rank);
+        }
+        if (ext_dir->is_valid()) {
+            _ext_record_collection[thread_id] = new ExtRecordTrace(std::move(ext_dir), rank);
+            _rank_ext_record_collection[rank].push_back(_ext_record_collection[thread_id]);
+            _rank_id_ext_record_collection[rank][thread_id] = _ext_record_collection[thread_id];
+        }
+
     }
 }
 
@@ -423,6 +488,8 @@ void RecordReader::section_load(const char *dir, const char* dwarf_dir, bool ena
                 std::unique_ptr<pse::ral::BackendInterface> backend_ptr = std::move(wrapper);
 
                 _node2backends.emplace(path_s, std::move(backend_ptr));
+            } else if (path.extension() == ".lock") {
+                // Do nothing for lock files
             } else {
                 JSI_WARN("RecordReader::load>> Ignore file %s with unknown extension.\n",
                          path.c_str());
@@ -837,7 +904,7 @@ std::string AcclRecordTrace::Iterator::to_string() {
     } else if (std::string(type_).substr(0, 5) == "HYGON") {
         auto current_record = static_cast<ext_record_accl*>(cur_);
         char buffer[1024] = {0};
-        str_sec_->read(buffer, current_record->sym_key.key, 1024);
+        str_sec_->read(buffer, current_record->sym_key.key, 1023);
         result << "Asynchronous workload name: " << buffer << "\n";
         result << "Correlation ID: " << current_record->correlation_id << "\n";
         result << "Start Time: " << current_record->begin_ns << "\n";
@@ -849,4 +916,73 @@ std::string AcclRecordTrace::Iterator::to_string() {
         JSI_ERROR("Not yet support architecture [%s]\n.", type_);
     }
     return result.str();
+}
+
+std::string AcclRecordTrace::Iterator::get_name() const {
+    if (std::string(type_).substr(0, 6) == "MATRIX") {
+        auto current_record = static_cast<record_t*>(cur_);
+        if (current_record->MsgType == event_ACCL_ACTIVITY_kernel) {
+            mt_record_kernel_t* rec = (mt_record_kernel_t*)current_record;
+            char buffer[1024] = {0};
+            str_sec_->read(buffer, rec->op, 1023);
+            return std::string(buffer);
+        }
+        return record_utils::get_record_name(current_record);
+    }
+    else if (std::string(type_).substr(0, 5) == "HYGON") {
+        auto current_record = static_cast<ext_record_accl*>(cur_);
+        char buffer[1024] = {0};
+        str_sec_->read(buffer, current_record->sym_key.key, 1023);
+        return std::string(buffer);
+    }
+    else {
+        throw std::invalid_argument("Architecture not supported yet\n");
+        JSI_ERROR("Not yet support architecture [%s]\n.", type_);
+    }
+    return std::string("Unknown ACCL Record");
+}
+
+#define __MATRIX_CYC2NS(x) ((x)*10/18)
+
+uint64_t AcclRecordTrace::Iterator::get_begin_ns() const {
+    if (std::string(type_).substr(0, 6) == "MATRIX") {
+        auto current_record = static_cast<record_t*>(cur_);
+        //! MATRIX processor collects cycles, so need to calculate nanosecond
+        return __MATRIX_CYC2NS(current_record->timestamps.enter);
+    }
+    else if (std::string(type_).substr(0, 5) == "HYGON") {
+        return static_cast<ext_record_accl*>(cur_)->begin_ns;
+    }
+    else {
+        throw std::invalid_argument("Architecture not supported yet\n");
+        JSI_ERROR("Not yet support architecture [%s]\n.", type_);
+    }
+}
+
+uint64_t AcclRecordTrace::Iterator::get_end_ns() const {
+    if (std::string(type_).substr(0, 6) == "MATRIX") {
+        auto current_record = static_cast<record_t*>(cur_);
+        //! MATRIX processor collects cycles, so need to calculate nanosecond
+        return __MATRIX_CYC2NS(current_record->timestamps.exit);
+    }
+    else if (std::string(type_).substr(0, 5) == "HYGON") {
+        return static_cast<ext_record_accl*>(cur_)->end_ns;
+    }
+    else {
+        throw std::invalid_argument("Architecture not supported yet\n");
+        JSI_ERROR("Not yet support architecture [%s]\n.", type_);
+    }
+}
+
+uint64_t AcclRecordTrace::Iterator::get_cid() const {
+    if (std::string(type_).substr(0, 6) == "MATRIX") {
+        return static_cast<mt_record_kernel_t*>(cur_)->correlation_id;
+    }
+    else if (std::string(type_).substr(0, 5) == "HYGON") {
+        return static_cast<ext_record_accl*>(cur_)->correlation_id;
+    }
+    else {
+        throw std::invalid_argument("Architecture not supported yet\n");
+        JSI_ERROR("Not yet support architecture [%s]\n.", type_);
+    }
 }

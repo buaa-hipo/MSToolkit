@@ -2,7 +2,30 @@ import sys
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.sparse import dok_matrix
 import csv
+
+def generate_simple_heatmap(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+    nrank = int(lines[0])
+    # matrix = np.zeros((nrank, nrank))
+    # Use a dictionary-of-keys format for efficient assignment
+    matrix = dok_matrix((nrank, nrank), dtype=int)
+    for i in range(1, len(lines)):
+        str_tup = lines[i].split(',')
+        sender = int(str_tup[0])
+        receiver = int(str_tup[1])
+        comm_times = int(str_tup[2])
+        matrix[sender,receiver] = comm_times
+        
+    plt.figure(figsize=(8, 6))
+    plt.spy(matrix, markersize=1, precision=0.1)
+    plt.title('MPI Send/Recv Structure Heatmap')
+    plt.xlabel('Receiver Process')
+    plt.ylabel('Sender Process')
+    plt.tight_layout()
+    plt.savefig('heatmap.png')
 
 def generate_heatmap(filename):
     with open(filename, 'r') as file:
@@ -30,6 +53,7 @@ def generate_heatmap(filename):
 
     # Show the heatmap
     # plt.show()
+    plt.tight_layout()
     plt.savefig('heatmap.png')
 
 if __name__ == '__main__':
@@ -38,5 +62,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     matrix_file = sys.argv[1]
+    # generate_simple_heatmap(matrix_file)
     generate_heatmap(matrix_file)
 

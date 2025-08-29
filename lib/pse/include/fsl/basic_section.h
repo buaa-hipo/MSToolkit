@@ -88,7 +88,7 @@ public:
 
     BasicDirSection openDirSection(Block::desc_t desc, bool create, bool force = false)
     {
-        return BasicDirSection(manager, manager->openDirSection(sec, desc, create, force));
+        return BasicDirSection(manager, manager->openDirSection(sec, desc, create, create?force:true));
     }
 
     static BasicDirSection openRootSection(std::shared_ptr<BlockManager> manager)
@@ -123,6 +123,11 @@ public:
         {
             return pse::ral::SectionBase::UNKNOWN;
         }
+    }
+
+    bool is_valid() const
+    {
+        return sec != nullptr;
     }
 };
 

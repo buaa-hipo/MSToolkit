@@ -137,12 +137,22 @@ typedef enum {                  // todo: maybe differentiate HBM/SHM/DDR
     ACCL_MEMCPY_OFF_SM,
     ACCL_MEMCPY_AM_OFF,
     ACCL_MEMCPY_SM_OFF,
-    ACCL_MEMCPY_OFF_OFF
+    ACCL_MEMCPY_OFF_GSM,
+    ACCL_MEMCPY_GSM_AM,
+    ACCL_MEMCPY_GSM_SM,
+    ACCL_MEMCPY_GSM_GSM,
+    ACCL_MEMCPY_GSM_OFF,
+    ACCL_MEMCPY_OFF_OFF,
+    ACCL_MEMCPY_ERROR
 } accl_memcpy_kind_t;
 
 typedef struct {
     accl_api_phase_t phase;
     uint64_t correlation_id;
+    struct {
+        uint64_t timestamp;
+        uint64_t pmu[26];
+    } BufferNode;
     union {                             // todo: whether to use union
         struct {
             int32_t cluster_id;
@@ -154,7 +164,6 @@ typedef struct {
         struct {
             int32_t cluster_id;
             uint32_t thread_num;
-            uint32_t kernel_index;  // todo: is this necessary? index the user defined kernels with int32 ?
             uint32_t thread_mask;
             uint32_t scalar_args_num;
             uint32_t ptr_args_num;

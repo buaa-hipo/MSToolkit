@@ -24,7 +24,7 @@ typedef enum {
 #define JSI_WARN(format...) JSI_LOG(JSILOG_WARN, format)
 #define JSI_ERROR(format...) do { \
     hthread_printf(__JSI_ERROR__ format); \
-    exit(-1); \
+    dsp_abort(100); \
 } while(0)
 
 #include <stdint.h>
@@ -91,6 +91,7 @@ typedef struct {
   uint32_t bytes;
   uint32_t mode;
   uint32_t kind;
+  void *address;
 } mt_record_malloc_t;
 
 typedef struct {
@@ -138,6 +139,6 @@ typedef struct {
 } mt_record_kernel_t;
 #endif
 
-extern void (*dev_api_callback)(uint32_t, uint32_t, const void *, void *);
+extern void (*dev_api_callback)(uint32_t, uint32_t, void *, void *);
 
 #endif // MT_DEV_TYPES_H

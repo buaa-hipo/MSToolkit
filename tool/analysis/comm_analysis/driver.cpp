@@ -109,11 +109,11 @@ int main(int argc, char* argv[]) {
     try {
         if (mode == 0)
         {
-            _reader = new RecordReader(input_dir.c_str(),DATA_MODEL,dump_dir.empty() ? nullptr : dump_dir.c_str());
+            _reader = new RecordReader(input_dir.c_str(),DATA_MODEL,dump_dir.empty() ? nullptr : dump_dir.c_str(), true, true, true);
         }
         else
         {
-            _reader = new RecordReader(input_dir.c_str(),SECTION_MODEL,dump_dir.empty() ? nullptr : dump_dir.c_str());
+            _reader = new RecordReader(input_dir.c_str(),SECTION_MODEL,dump_dir.empty() ? nullptr : dump_dir.c_str(), true, true, true);
         }
         RecordReader& reader = *_reader;
         RecordTraceCollection& traces = reader.get_all_traces();

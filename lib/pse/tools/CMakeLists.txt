@@ -3,3 +3,5 @@ project(toosl)
 
 add_executable(sls sls.cpp)
 target_link_libraries(sls PUBLIC FSL ${BACKWARD_LIB})
+
+install(TARGETS sls DESTINATION bin)

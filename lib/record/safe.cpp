@@ -30,9 +30,13 @@ void _safe_thread_init() {
         JSI_INFO("thread data already initialized.");
         return ;
     }
-    for(int i=0; i<init_cb_list->size(); ++i) {
-        JSI_INFO("[DEBUG][PID=%d, TID=%d] THREAD INIT for i=%d, init=%p\n", get_pid(), get_tid(), i, (*init_cb_list)[i]);
-        (*init_cb_list)[i]();
+    if (init_cb_list!=nullptr) {
+        for(int i=0; i<init_cb_list->size(); ++i) {
+            JSI_INFO("[DEBUG][PID=%d, TID=%d] THREAD INIT for i=%d, init=%p\n", get_pid(), get_tid(), i, (*init_cb_list)[i]);
+            (*init_cb_list)[i]();
+        }
+    } else {
+        JSI_DEBUG("[PID=%d, TID=%d] No initialize function REGISTERED\n", get_pid(), get_tid());
     }
     thread_data_initialized = true;
     JSI_INFO("[DEBUG][PID=%d, TID=%d] THREAD INITIALIZED\n", get_pid(), get_tid());
@@ -43,9 +47,13 @@ void _safe_thread_finalize() {
         JSI_INFO("thread data not initialized.");
         return ;
     }
-    for(int i=0; i<fini_cb_list->size(); ++i) {
-        JSI_INFO("[DEBUG][PID=%d, TID=%d] THREAD FINALIZE for i=%d, fini=%p\n", get_pid(), get_tid(), i, (*fini_cb_list)[i]);
-        (*fini_cb_list)[i]();
+    if (fini_cb_list!=nullptr) {
+        for(int i=0; i<fini_cb_list->size(); ++i) {
+            JSI_INFO("[DEBUG][PID=%d, TID=%d] THREAD FINALIZE for i=%d, fini=%p\n", get_pid(), get_tid(), i, (*fini_cb_list)[i]);
+            (*fini_cb_list)[i]();
+        }
+    } else {
+        JSI_DEBUG("[PID=%d, TID=%d] No finalize function REGISTERED\n", get_pid(), get_tid());
     }
     thread_data_initialized = false;
     JSI_INFO("[DEBUG][PID=%d, TID=%d] THREAD FINALIZED\n", get_pid(), get_tid());

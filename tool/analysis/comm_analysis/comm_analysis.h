@@ -11,7 +11,7 @@
 class CommunicationAnalyzer {
   public:
     struct CommAnalyzeItem {
-      CommAnalyzeItem(int rank, record_t* r, uint64_t dur, uint64_t volume, int pmu_num) : rank(rank), data(r), duration(dur), volume(volume) {
+      CommAnalyzeItem(int rank, record_t* r, uint64_t dur, uint64_t volume, int pmu_num, std::string id) : rank(rank), data(r), duration(dur), volume(volume), id(id) {
         int size = RecordHelper::get_record_size(r, pmu_num);
         data = (record_t*) malloc(size);
         memcpy(data, r, size);
@@ -40,6 +40,7 @@ class CommunicationAnalyzer {
       double duration;
       uint64_t volume;
       double time_percentage;
+      std::string id;
     } ;
 
     typedef struct {
@@ -93,7 +94,7 @@ class CommunicationAnalyzer {
     // all the comm split from the same old comm with the same color have the same new name.
     std::unordered_map<std::string, std::unordered_map<int,std::string>> _old_comm_name_to_color2new_name;
 
-    typedef std::vector<std::pair<int,record_barrier_t*>> _barrier_rank_event_list; 
+    typedef std::vector<std::pair<std::string,record_barrier_t*>> _barrier_rank_event_list; 
     typedef std::unordered_map<int32_t, _barrier_rank_event_list> _barrier_order_to_event_list;
     std::unordered_map<std::string, _barrier_order_to_event_list> _mpi_comm_2_event_map;
 

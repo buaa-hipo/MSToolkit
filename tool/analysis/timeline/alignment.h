@@ -9,6 +9,7 @@ class TimelineAlignment {
     public:
     TimelineAlignment();
     ~TimelineAlignment();
+    bool align_for_main_thread_traces(RankRecordTraceCollection& collection, RankMetaCollection& metas);
     bool align(RecordTraceCollection& collection, RankMetaCollection& metas);
     bool verify(RecordTraceCollection& collection);
     /* verify the timeline alignment by checking if there are violations 

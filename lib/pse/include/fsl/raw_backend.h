@@ -37,6 +37,8 @@ private:
         return len;
     }
     size_t size() const { return sec->sectionSize; }
+
+    bool is_valid() const { return sec != nullptr; }
 };
 
 class RawStringSection : public ral::SectionBase, public ral::StringSectionMixin<RawStringSection>
@@ -75,6 +77,7 @@ private:
         return len;
     }
     size_t total_length() const { return sec->sectionSize; }
+    bool is_valid() const { return sec != nullptr; }
 };
 
 /**
@@ -145,6 +148,7 @@ private:
 
     size_t record_size() const { return type_desc.size; }
     ral::desc_t self_desc() const { return sec->self_desc; }
+    bool is_valid() const { return sec != nullptr; }
 };
 
 class RawDirSection : public ral::SectionBase, public ral::DirSectionMixin<RawDirSection>
@@ -313,6 +317,7 @@ private:
     {
         return StreamSection(sec.get_manager(), sec.openDataSection(desc, create));
     }
+    bool is_valid() const { return sec.is_valid(); }
 };
 
 class RawSectionBackend : public ral::BackendMixin<RawSectionBackend>

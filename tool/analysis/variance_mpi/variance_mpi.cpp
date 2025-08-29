@@ -392,7 +392,7 @@ ParallelVarianceMap::ParallelVarianceMap(RecordTraceCollection& collection, Back
     double __total_time = 0;
     double __mpi_time = 0;
     double __calc_time = 0;
-    #pragma omp for
+    #pragma omp for schedule(dynamic)
     for (int i=0; i<n; ++i) {
         // extract info
         int rank = collection_vec[i].first;
@@ -532,7 +532,7 @@ ParallelVarianceMap::ParallelVarianceMap(RecordTraceCollection& collection, Back
     for(int i=0; i<(int)LAST_NUM; ++i) {
         prob_cnt[i] = 0;
     }
-    #pragma omp parallel
+    #pragma omp parallel schedule(dynamic)
     {
     // unordered_map<string /*encoding*/, unordered_map<uint64_t /*us*/, SmoothData_t > > smooth_map;
     unordered_map<string /*encoding*/, SmoothData_t > smooth_map;

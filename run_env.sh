@@ -1,7 +1,5 @@
 #!/bin/bash
 
-module load llvm
-
 # . /thfs3/home/yanghailong/xzh/spack-0.23.1/share/spack/setup-env.sh
 
 export CPATH=/thfs3/home/yanghailong/libdwarf/include/libdwarf-0:$CPATH
@@ -12,7 +10,8 @@ export LD_LIBRARY_PATH=/thfs3/home/yanghailong/xzh/spack-0.23.1/opt/spack/linux-
 export LD_LIBRARY_PATH=/thfs3/home/yanghailong/xzh/spack-0.23.1/opt/spack/linux-ubuntu20.04-aarch64/gcc-12.3.0/gcc-runtime-12.3.0-ndnfj35mzk2uepl2xexfd4gte26fr33z/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/thfs3/home/yanghailong/xzh/spack-0.23.1/opt/spack/linux-ubuntu20.04-aarch64/gcc-12.3.0/libunwind-1.7.2-6brbmkcazwvonhh3ilhx2whzgjrwjslg/lib:$LD_LIBRARY_PATH
 
-source /thfs3/home/yanghailong/xzh/JSI-Toolkit/env.sh
+#source /thfs3/home/yanghailong/mstoolkit/env.sh
+source /thfs3/home/yanghailong/mstoolkit-from-hn/env.sh
 
 # spack load gcc@12.3.0 dyninst libunwind otf2 boost sqlite range-v3 fmt spdlog magic-enum
 

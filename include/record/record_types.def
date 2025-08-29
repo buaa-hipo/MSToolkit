@@ -151,6 +151,7 @@ TYPE mt_record_malloc_t : record_t
     uint32_t bytes : "Bytes of memory allocated"
     uint32_t mode : "Mode of memory allocated (read only / write only / read write / cache)"
     uint32_t kind : "Memory kind (hardware location)"
+    void *address : "Pointer to the block"
 END TYPE
 
 FOR ACCL_API_free,ACCL_API_vector_free,ACCL_API_scalar_free,ACCL_API_hbm_free

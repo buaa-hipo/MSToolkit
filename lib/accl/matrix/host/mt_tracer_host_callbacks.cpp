@@ -22,6 +22,7 @@ int jsi_pmu_num = 4;
 #include "record/mt_callback_defs.h"
 #include "utils/jsi_log.h"
 #include "utils/tsc_timer.h"
+#include "utils/safe.hpp"
 
 #ifdef ENABLE_BACKTRACE
 #define TRACER_INNER_BT_DEPTH 2
@@ -38,15 +39,8 @@ void write_to_file(void *rec, size_t size) {
 }
 
 void buffer_callback_impl(const char *begin, const char *end, void *args) {
-#ifdef DEBUG
-    std::cout << "\nIn buffer callback!" << std::endl;
-#endif
     for (auto cur = reinterpret_cast<const accl_activity_record_t *>(begin);
          cur != reinterpret_cast<const accl_activity_record_t *>(end); accl_next_record(cur, &cur)) {
-#ifdef DEBUG
-        std::cout << "Kernel index: " << cur->kernel_index << " - " << accl_op_string(cur->domain, cur->op, cur->kind)
-                  << std::endl;
-#endif
         JSI_WARN("Writing device activity trace\n");
         FILE *dev_trace = fopen("./dev_trace.etr", "ab");
         fwrite(cur, sizeof(accl_activity_record_t), 1, dev_trace);
@@ -56,6 +50,7 @@ void buffer_callback_impl(const char *begin, const char *end, void *args) {
 }
 
 void api_callback_impl(uint32_t domain, uint32_t cid, const void *callback_data, void *arg) {
+    jsi_safe_enter_instr();
     uint64_t ts   = get_tsc_raw();
     auto     data = static_cast<const matrix_api_data_t *>(callback_data);
     if (data->phase == ACCL_API_ENTER) {
@@ -71,7 +66,7 @@ void api_callback_impl(uint32_t domain, uint32_t cid, const void *callback_data,
             }
             tracer.buffer_node_valid_[ri] = true;
         } else {
-            JSI_ERROR("TS BUFF RING COLLISION DETECTED. USE LARGER RING_SIZE!");
+            JSI_ERROR("HOST TS BUFF RING COLLISION DETECTED. USE LARGER RING_SIZE!");
         }
     } else {
         size_t   ri       = data->correlation_id % tracer.ring_size_;
@@ -132,11 +127,13 @@ void api_callback_impl(uint32_t domain, uint32_t cid, const void *callback_data,
                 RecordWriter::traceStore((const record_t *)(rec));
 
                 uint64_t *counters = reinterpret_cast<uint64_t *>(rec + 1);
+#ifdef DEBUG
                 printf("PMU reads of kernel launch:\n");
                 for (int i = 0; i < 2 * jsi_pmu_num; ++i) {
                     printf("%lu ", counters[i]);
                 }
                 printf("\n");
+#endif
 #ifdef DEBUG
                 printf("\nKernel Launch:\n");
                 printf("MsgType: %d\n", rec[0].record.MsgType);
@@ -206,6 +203,7 @@ void api_callback_impl(uint32_t domain, uint32_t cid, const void *callback_data,
                 rec[0].bytes                   = data->mem_alloc.bytes;
                 rec[0].mode                    = data->mem_alloc.mode;
                 rec[0].kind                    = data->mem_alloc.kind;
+                rec[0].address = data->mem_alloc.address;
                 rec[0].record.timestamps.enter = enter_ts;
                 rec[0].record.timestamps.exit  = ts;
 
@@ -476,19 +474,12 @@ void api_callback_impl(uint32_t domain, uint32_t cid, const void *callback_data,
                 DEALLOCATE(rec, sizeof(record_activity_t) + sizeof(uint64_t) * 2 * jsi_pmu_num);
             }
         }
-        tracer.buffer_node_valid_[ri] = false;
     }
+    jsi_safe_exit_instr();
 }
 
 __attribute__((constructor)) void tracer_init() {
-    JSI_WARN("ACCL tracer initialization start\n");
-    buffer_pool_property_t property = {
-        .buffer_size         = 1024,
-        .alloc_fun           = nullptr,
-        .alloc_arg           = nullptr,
-        .buffer_callback_fun = buffer_callback_impl,
-        .buffer_callback_arg = nullptr,
-    };
+    JSI_INFO("ACCL tracer initialization start\n");
     const char              *events_str = getenv("JSI_COLLECT_DEV_PMU_EVENT");
     std::vector<std::string> event_list;
     parse_dev_pmu_events_list(events_str, &event_list);
@@ -505,15 +496,9 @@ __attribute__((constructor)) void tracer_init() {
     RecordWriter::metaSectionStart("ACCL TRACE META");
     RecordWriter::metaStore<std::string>("ACCL_DEVICE_TYPE", "MATRIX");
     RecordWriter::metaStore<int>("ACCL_PMU_NUM_EVENTS", (int)tracer.device_pmu_events.size());
-    RecordWriter::metaStore("ACCL_PMU_EVENT_LIST", events_str);
+    if (events_str != NULL) RecordWriter::metaStore("ACCL_PMU_EVENT_LIST", events_str);
     RecordWriter::metaSectionEnd("ACCL TRACE META");
 
-    tracer.MemoryPoolInit(&property);
     tracer.RegisterCallback(api_callback_impl);
-    JSI_WARN("Tracer initialized\n");
-    fflush(stdout);
-}
-
-__attribute__((destructor)) void tracer_fin() {
-    std::cout << "Finalizing..." << std::endl;
+    JSI_INFO("Accl tracer initialized\n");
 }

@@ -3,6 +3,10 @@
 #include <fsl/raw_backend.h>
 #include <filesystem>
 
+struct Dummy
+{
+    int64_t time;
+};
 using namespace pse::fsl;
 using std::string;
 using std::vector;
@@ -56,98 +60,46 @@ vector<string> split(const string &s, const string &seperator)
     }
     return result;
 }
-struct Dummy
+
+void printDir(auto&& dir, int level=0)
 {
-    int64_t time;
-};
+        std::string level_tab = "";
+        for (int i = 0; i < level; ++i)
+        {
+                level_tab += "\t";
+        }
+        spdlog::info("{}dir sec desc: {}", level_tab.c_str(), dir->self_desc());
+        std::unique_ptr<pse::ral::DataSectionInterface> dataSec = nullptr;
+        for (auto iter = dir->begin(); iter != dir->end(); ++iter)
+        {
+                if (iter.isa(pse::ral::SectionBase::DIR))
+                {
+                        auto child = iter.getDirSection();
+                        printDir(child, level + 1);
+                }
+                else if(iter.isa(pse::ral::SectionBase::DATA))
+                {
+                        //auto child = iter.getDataSection();
+                        //spdlog::info("print child {}", iter.getDesc());
+                        auto child = dir->template openDataSection<Dummy>(iter.getDesc(), false, 0, 0);
+                        spdlog::info("{}\tsec desc: {}, size: {}, record size: {}", level_tab, child->self_desc(), child->size(), child->record_size());
+                }
+        }
+
+
+}
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
+    if (argc != 2)
     {
-        // spdlog::error("Usage: {} <filename> <section>", argv[0]);
+        spdlog::error("Usage: {} <filename>", argv[0]);
         return 1;
     }
-    // spdlog::set_level(// spdlog::level::info);
+    spdlog::set_level(spdlog::level::info);
 
     auto backend = pse::fsl::RawSectionBackend(argv[1], pse::ral::RWMode::READ);
     auto wrapper = pse::ral::BackendWrapper(std::move(backend));
 
     auto parent = wrapper.openRootSection();
-    string path = argv[2];
-    auto sections = split(path, "/");
-    std::unique_ptr<pse::ral::DataSectionInterface> dataSec = nullptr;
-    pse::ral::SectionBase::SectionType type;
-    for (auto section_id : sections)
-    {
-        type = parent->getSectionType(std::stoi(section_id));
-        if (type == pse::ral::SectionBase::SectionType::DIR)
-        {
-            parent = parent->openDirSection(std::stoi(section_id), false);
-        }
-        else if (type == pse::ral::SectionBase::SectionType::DATA)
-        {
-            dataSec = std::move(parent->openDataSection<Dummy>(std::stoi(section_id), false, 0, 0));
-            parent = nullptr;
-            break;
-        }
-        else
-        {
-            // spdlog::error("Invalid section type");
-            return 1;
-        }
-    }
-    if (parent)
-    {
-        for (auto iter = parent->begin(); iter != parent->end(); ++iter)
-        {
-            // spdlog::info("[desc]: {}, [isa dir]: {}", iter.getDesc(), iter.isa(pse::ral::SectionBase::DIR));
-        }
-    }
-    else if (dataSec)
-    {
-        // spdlog::info("sec size: {}", dataSec->size() * sizeof(Dummy));
-    }
+    printDir(parent);
 }
-// int main(int argc, char *argv[])
-// {
-//     if (argc != 3)
-//     {
-//         // spdlog::error("Usage: {} <filename> <section>", argv[0]);
-//         return 1;
-//     }
-//     // spdlog::set_level(// spdlog::level::debug);
-//     BlockManager bm(argv[1], pse::ral::READ);
-//     auto parent = bm.openRootSection();
-//     string path = argv[2];
-//     auto sections = split(path, "/");
-//     pse::fsl::DataSectionDescBlock *dataSec = nullptr;
-//     for (auto section_id : sections)
-//     {
-//         auto section = bm.openSection(parent, std::stoi(section_id), false, true, 0);
-//         parent = Block::dyn_cast<DirSectionDescBlock>(section);
-//         if (!parent)
-//         {
-//             dataSec = Block::dyn_cast<DataSectionDescBlock>(section);
-//             break;
-//         }
-//     }
-//     if (parent)
-//     {
-//         for (auto id : parent->direct)
-//         {
-//             if (id.desc == 0)
-//             {
-//                 break;
-//             }
-//             // spdlog::info("[desc, id]: {} {}", id.desc, id.blockId);
-//         }
-//     }
-//     else
-//     {
-//         // spdlog::info("sec size: {}", dataSec->sectionSize);
-//         for (auto id : dataSec->direct)
-//         {
-//             // spdlog::info("[id]: {}", id);
-//         }
-//     }
-// }

@@ -248,6 +248,77 @@ struct RecordHelper {
                r->MsgType!=JSI_ACCL_ACTIVITY_EVENT;
     }
 
+    static inline __attribute__((always_inline))
+    bool is_hip_kernel_launch(record_t *record) {
+        return RecordHelper::is_event(record, event_hipLaunchKernel)
+            || RecordHelper::is_event(record, event_hipExtLaunchKernel)
+            || RecordHelper::is_event(record, event_hipExtLaunchMultiKernelMultiDevice)
+            || RecordHelper::is_event(record, event_hipLaunchCooperativeKernelMultiDevice)
+            || RecordHelper::is_event(record, event_hipExtModuleLaunchKernel)
+            || RecordHelper::is_event(record, event_hipHccModuleLaunchKernel)
+            || RecordHelper::is_event(record, event_hipLaunchCooperativeKernel)
+            || RecordHelper::is_event(record, event_hipLaunchKernel_internal)
+            || RecordHelper::is_event(record, event_hipLaunchCooperativeKernelMultiDevice)
+            || RecordHelper::is_event(record, event_hipModuleLaunchKernel)
+            || RecordHelper::is_event(record, event_hipLaunchCooperativeKernel);
+    }
+
+    static inline __attribute__((always_inline))
+    bool is_mt_kernel_launch(record_t *record) {
+        return RecordHelper::is_event(record, event_ACCL_API_group_create_launch)
+            || RecordHelper::is_event(record, event_ACCL_API_group_create_masked_launch)
+            || RecordHelper::is_event(record, event_ACCL_API_group_exec);
+    }
+
+    static inline __attribute__((always_inline))
+    bool is_hip_memcpy_async(record_t *record) {
+        return RecordHelper::is_event(record, event_hipMemcpyAsync)
+            || RecordHelper::is_event(record, event_hipDrvMemcpy3DAsync)
+            || RecordHelper::is_event(record, event_hipMemcpy2DAsync)
+            || RecordHelper::is_event(record, event_hipMemcpy2DFromArrayAsync)
+            || RecordHelper::is_event(record, event_hipMemcpy2DToArrayAsync)
+            || RecordHelper::is_event(record, event_hipMemcpy3DAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyDtoDAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyDtoHAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyFromSymbolAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyHtoDAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyParam2DAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyPeerAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyToSymbolAsync)
+            || RecordHelper::is_event(record, event_hipMemcpyWithStream);
+    }
+
+    static inline __attribute__((always_inline))
+    bool is_hip_memcpy(record_t *record) {
+        return RecordHelper::is_event(record, event_hipMemcpy)
+            || RecordHelper::is_event(record, event_hipDrvMemcpy3D)
+            || RecordHelper::is_event(record, event_hipMemcpy2D)
+            || RecordHelper::is_event(record, event_hipMemcpy2DFromArray)
+            || RecordHelper::is_event(record, event_hipMemcpy2DToArray)
+            || RecordHelper::is_event(record, event_hipMemcpy3D)
+            || RecordHelper::is_event(record, event_hipMemcpyDtoD)
+            || RecordHelper::is_event(record, event_hipMemcpyDtoH)
+            || RecordHelper::is_event(record, event_hipMemcpyFromSymbol)
+            || RecordHelper::is_event(record, event_hipMemcpyHtoD)
+            || RecordHelper::is_event(record, event_hipMemcpyParam2D)
+            || RecordHelper::is_event(record, event_hipMemcpyPeer)
+            || RecordHelper::is_event(record, event_hipMemcpyToSymbol)
+            || RecordHelper::is_event(record, event_hipMemcpyWithStream);
+    }
+
+    static inline __attribute__((always_inline))
+    bool is_accl_memcpy_activity(record_t *record) {
+        return RecordHelper::is_event(record, event_hipMemcpy) 
+            || RecordHelper::is_event(record, event_hipMemcpyWithStream)
+            || RecordHelper::is_event(record, event_hipMemcpyAsync);
+    }
+
+    static inline __attribute__((always_inline))
+    bool is_kernel_launch(record_t *record) {
+        return RecordHelper::is_hip_kernel_launch(record)
+            || RecordHelper::is_mt_kernel_launch(record);
+    }
+
     // ATTENTION: Use with pointer of accurate record types
     template<typename RecordType>
     static inline __attribute__((always_inline))
@@ -418,10 +489,13 @@ struct RecordHelper {
 };
 
 class ExtRecordTrace {
+public:
+    class IteratorPair;
 private:
     int _rank;
     std::unique_ptr<pse::ral::DirSectionInterface> _dir;
     std::unordered_map<uint64_t, std::unique_ptr<pse::ral::StreamSectionInterface>> _secs;
+    std::vector<IteratorPair> _iterator_list;
 public:
     ExtRecordTrace(std::unique_ptr<pse::ral::DirSectionInterface>&& dir, int _rank) : _dir(std::move(dir)), _rank(_rank) {
         for (auto iter = _dir->begin(); iter != _dir->end(); ++iter) {
@@ -430,7 +504,9 @@ public:
                 auto sec = iter.getStreamSection();
                 if (sec)
                 {
-                    _secs[iter.getDesc()-StaticSectionDesc::EXT_SEC_OFFSET] = std::move(sec);
+                    auto id = iter.getDesc()-StaticSectionDesc::EXT_SEC_OFFSET;
+                    _secs[id] = std::move(sec);
+                    _iterator_list.push_back({id, begin(id), end(id)});
                 }
             }
         }
@@ -462,15 +538,26 @@ public:
                 buffer.resize(_cur_size);
                 _stream->read(buffer.data(), _cur + 4, _cur_size);
                 _cur = _cur + 4 + _cur_size;
+            } else if (buffer.size()==0) {
+                buffer.resize(_cur_size);
+                _stream->read(buffer.data(), _cur + 4, _cur_size);
+                _cur = _cur + _cur_size;
             }
             return buffer.data();
         }
-        size_t record_size() const {
+        size_t record_size() {
+            if (_cur_size == -1)
+            {
+                _stream->read(&_cur_size, _cur, 4);
+                _cur = _cur + 4;
+            }
             return _cur_size;
         }
 
         Iterator& operator++() {
+            get(); // ensure to next record
             _cur_size = -1;
+            buffer.clear();
             return *this;
         }
 
@@ -496,6 +583,15 @@ public:
         return _secs.contains(id);
     }
 
+    class IteratorPair {
+        public:
+            int id;
+            Iterator begin_iter;
+            Iterator end_iter;
+    };
+
+    std::vector<IteratorPair>& getIteratorList() { return _iterator_list; }
+
     int rank() const {return _rank;}
 };
 
@@ -516,16 +612,18 @@ private:
     void *_global_trace_view_end;
 
     bool _is_global;
-
+    int section_size = -1;
     std::vector<std::string> _pmu_event_list;
 
     void detect_size();
-
+public:
     std::unique_ptr<pse::ral::DirSectionInterface> _sec;
 
 
 public:
     int _size;
+    /*! FIXME: when using SECTION_MODEL, the record pointer in the iterator is not guaranteed to be safely hold by users. */
+    //! DO NOT HOLD ANY RECORD POINTERS AFTER MOD/FREE
     class RecordTraceIterator {
     private:
         record_t *_cur = nullptr;
@@ -536,7 +634,17 @@ public:
     public:
         record_t *val() {
             if (_trace->_model == SECTION_MODEL) {
-                return (record_t *) *extractor;
+                auto size = extractor.record_size();
+                auto buf = new char[size];
+                memcpy(buf, (record_t*)*extractor, size);
+                return (record_t *) buf;
+            }
+            return _cur;
+        }
+
+        record_t *val_cache() {
+            if (_trace->_model == SECTION_MODEL) {
+                return (record_t*)*extractor;
             }
             return _cur;
         }
@@ -561,6 +669,8 @@ public:
             return RecordTraceIterator(next, _trace);
         }
 
+        RecordTraceIterator() : _cur(nullptr), _trace(nullptr), extractor({}) {}
+
         explicit RecordTraceIterator(void *cur, RecordTrace *trace)
             : _cur{(record_t *) cur},
               _trace{trace},
@@ -571,16 +681,19 @@ public:
             : _trace{trace}, extractor({}) {
             std::vector<std::pair<pse::ral::DataSectionInterface::Iterator, pse::ral::DataSectionInterface::Iterator>> iters;
             for (auto iter = sec->begin(); iter != sec->end(); ++iter) {
+                //fprintf(stderr, "RecordTraceIterator::RecordTraceIterator: iter.getDesc()=%ld, %ld\n", iter.getDesc(), StaticSectionDesc::RECORD_SEC_OFFSET);
                 if (iter.getDesc() >= StaticSectionDesc::RECORD_SEC_OFFSET)
                 {
-                    auto sec = iter.getDataSection();
-                    if (sec)
+                    // auto sec = iter.getDataSection();
+                    auto _sec = sec->openDataSection<record_t>(iter.getDesc(), false, 0, 0);
+                    if (_sec)
                     {
-                        iters.push_back({sec->begin(), sec->end()});
-                        secs.push_back(std::move(sec));
+                        iters.push_back({_sec->begin(), _sec->end()});
+                        secs.push_back(std::move(_sec));
                     }
                 }
             }
+            //fprintf(stderr, "RecordTraceIterator::RecordTraceIterator: iters.size = %ld\n", iters.size());
             extractor = pse::ral::SectionExtractor(std::move(iters));
         }
 
@@ -651,6 +764,25 @@ public:
     ~RecordTrace();
 
     inline int size() {
+        if (_model = SECTION_MODEL) 
+        {
+            if (section_size == -1) {
+                section_size = 0;
+                for (auto iter = _sec->begin(); iter != _sec->end(); ++iter) {
+                    //fprintf(stderr, "RecordTraceIterator::RecordTraceIterator: iter.getDesc()=%ld, %ld\n", iter.getDesc(), StaticSectionDesc::RECORD_SEC_OFFSET);
+                    if (iter.getDesc() >= StaticSectionDesc::RECORD_SEC_OFFSET)
+                    {
+                        // auto sec = iter.getDataSection();
+                        auto sec = _sec->openDataSection<record_t>(iter.getDesc(), false, 0, 0);
+                        if (sec)
+                        {
+                            section_size += sec->size();
+                        }
+                    }
+                }
+            }
+            return section_size;
+        }
         if (_end == -1) {
             detect_size();
         }
@@ -659,15 +791,19 @@ public:
 
     inline RecordTraceIterator begin() {
         if (_model == SECTION_MODEL) {
+            //fprintf(stderr, "RecordTraceIterator::begin checking zoom_begin\n");
             if (RecordTraceIterator::is_invalid(zoom_begin))
             {
+                //fprintf(stderr, "RecordTraceIterator::begin return global_begin()\n");
                 return global_begin();
             }
+            //fprintf(stderr, "RecordTraceIterator::begin return zoom_begin()\n");
             return zoom_begin;
         }
         else
         {
-         return RecordTraceIterator(_trace_view_start, this);
+            //fprintf(stderr, "RecordTraceIterator::begin return _trace_view_start\n");
+            return RecordTraceIterator(_trace_view_start, this);
         }
     }
 
@@ -684,6 +820,7 @@ public:
 
     inline RecordTraceIterator global_begin() {
         if (_model == SECTION_MODEL) {
+            // printf("RecordTraceIterator::global_begin: _sec.get()=%p, this=%p\n", _sec.get(), this);
             return RecordTraceIterator(_sec.get(), this);
         }
         return RecordTraceIterator(_global_trace_view_start, this);
@@ -745,6 +882,7 @@ public:
      * return: whether success or not
      */
     bool zoom(uint64_t ts_s, uint64_t ts_e, uint64_t offset);
+    std::pair<RecordTraceIterator,RecordTraceIterator> zoom_ts(int ts_id, uint64_t ts_s, uint64_t ts_e, uint64_t offset);
 
     int rank() const {return _rank;}
 
@@ -831,6 +969,10 @@ typedef std::unordered_map<std::string, BacktraceTree *> BacktraceCollection;
 typedef std::unordered_map<std::string, RecordTraceExt *> RecordTraceExtCollection;
 typedef std::unordered_map<std::string, ExtRecordTrace *> ExtRecordTraceCollection;
 typedef std::unordered_map<std::string, pse::ral::StringSectionInterface*> StringSectionCollection;
+typedef std::unordered_map<int, RecordTrace *> RankRecordTraceCollection;
+typedef std::unordered_map<int, std::vector<ExtRecordTrace *>> RankExtRecordTraceCollection;
+
+typedef std::unordered_map<int, std::unordered_map<std::string, ExtRecordTrace*>> RankIdExtRecordTraceCollection;
 
 class RecordReader {
 protected:
@@ -843,6 +985,10 @@ protected:
     RecordTraceExtCollection _record_ext_collection;
     ExtRecordTraceCollection _ext_record_collection;
     StringSectionCollection _string_section_collection;
+    RankRecordTraceCollection _rank_record_collection;
+    RankExtRecordTraceCollection _rank_ext_record_collection;
+
+    RankIdExtRecordTraceCollection _rank_id_ext_record_collection;
 
     std::unordered_map<std::string, int> _id2rank{};
     std::unordered_map<int, std::vector<std::string>> _pmu_event_list_collection{};
@@ -881,6 +1027,11 @@ public:
     RecordTraceCollection &get_all_sampling_traces() { return _sampling_record_collection;}
     ExtRecordTraceCollection &get_all_etraces() { return _ext_record_collection;}
     StringSectionCollection &get_all_string_sections() { return _string_section_collection; }
+
+    RankRecordTraceCollection &get_main_thread_traces() { return _rank_record_collection; }
+    RankExtRecordTraceCollection &get_all_etraces_by_rank() { return _rank_ext_record_collection; }
+
+    RankIdExtRecordTraceCollection &get_all_id_etraces_by_rank() { return _rank_id_ext_record_collection; }
 
     RecordMeta &get_meta_map(int rank);
 
@@ -948,6 +1099,11 @@ public:
         void* get() const {
             return cur_;
         }
+
+        std::string get_name() const;
+        uint64_t get_begin_ns() const;
+        uint64_t get_end_ns() const;
+        uint64_t get_cid() const;
 
         std::string to_string();
     };

@@ -26,8 +26,8 @@ void *instrumented_hbm_malloc(unsigned long bytes);
 void instrumented_hbm_free(void *ptr);
 
 // instrumented dev async api
-void instrumented_kernel(const char* name, uint32_t host_pid, uint64_t kernel_cid, uint32_t kid, uint32_t phase);
-void instrumented_func(void *func, const char *func_name, unsigned long cid, uint32_t phase);
+void instrumented_kernel(uint32_t host_pid, uint64_t kernel_cid, uint32_t kid, uint32_t phase);
+void instrumented_func(unsigned long cid, uint32_t phase);
 
 int instrumented_vector_load_async(void *mem, void *buf, unsigned int bytes);
 int instrumented_vector_store_async(void *buf, void *mem, unsigned int bytes);

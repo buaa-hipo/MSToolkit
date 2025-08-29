@@ -19,14 +19,15 @@ typedef enum {
     PMU_ESYS    = -3,
     PMU_EBIGSET = -4,
     PMU_ENOEVNT = -7,
+    PMU_ENOTRUN = -9,
     PMU_EISRUN  = -10
-}pmu_api_status_t;
+} pmu_api_status_t;
 
 typedef struct {
     int eventNum;
     int events[MAX_PMU_NUM];
     int running;
-}ESInfo;
+} ESInfo;
 
 void MT_PMU_collector_init();
 void MT_PMU_collector_fin();
@@ -46,6 +47,10 @@ pmu_api_status_t PMU_stop                (int EventSet, unsigned long *values);
 pmu_api_status_t PMU_read                (int EventSet, unsigned long *values);
 pmu_api_status_t PMU_reset               (int EventSet);
 void PMU_shutdown();
+
+void simple_pmu_start();
+void simple_pmu_read(unsigned long *);
+void simple_pmu_end();
 
 #include <string.h>
 

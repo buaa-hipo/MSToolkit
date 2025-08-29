@@ -1,4 +1,3 @@
-#include "clang/AST/AST.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -8,7 +7,6 @@
 #include "clang/Tooling/Tooling.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-#include <iostream>
 #include <vector>
 #include <string>
 #include <cstdlib>
@@ -55,10 +53,26 @@ public:
 
         FileID MainFileID = SM.getMainFileID();
         
-		std::string Filename = std::string(SM.getFileEntryForID(SM.getMainFileID())->getName());
+		// std::string Filename = std::string(SM.getFileEntryForID(SM.getMainFileID())->getName());
+        auto file_entry_ref = SM.getFileEntryForID(MainFileID);
+        if (!file_entry_ref) {
+            llvm::errs() << "SM.getFileEntryForID(MainFileID) failed!\n";
+            exit(1);
+        }
+        std::string Filename = file_entry_ref->tryGetRealPathName().str();
+
+        // size_t last_slash_pos = Filename.find_last_of("/\\");
+        // std::string directory = (last_slash_pos == std::string::npos) ? "" : Filename.substr(0, last_slash_pos + 1);
+        // std::string base_name = (last_slash_pos == std::string::npos) ? Filename : Filename.substr(last_slash_pos + 1);
+        // std::string instrumented_dir = directory + "source_instrumented";
+        // std::string output_file = instrumented_dir + "/" + base_name;
+        // std::error_code mkdirEC = llvm::sys::fs::create_directories(instrumented_dir, true);
+        // if (mkdirEC) {
+        //     llvm::errs() << "Failed to create directory: " << instrumented_dir << "\n";
+        //     return;
+        // }
 		std::error_code EC;
-		llvm::raw_fd_ostream outFile(Filename + ".out", EC, llvm::sys::fs::OF_None);
-        std::cerr << "BEFORE OUTPUT" << std::endl;
+		llvm::raw_fd_ostream outFile(Filename, EC, llvm::sys::fs::OF_None);
 		TheRewriter.getEditBuffer(MainFileID).write(outFile);
     }
 
@@ -107,15 +121,20 @@ int main(int argc, const char **argv) {
     }
     CommonOptionsParser &OptionsParser = *ExpectedParser;
 
+    std::error_code err = llvm::sys::fs::create_directories("source_instrumented", true);
+    if (err) {
+        llvm::errs() << "Failed to create directory: source_instrumented\n";
+            return 1;
+    }
+
     std::vector<std::string> source_paths = OptionsParser.getSourcePathList();
     for (size_t i = 0; i < source_paths.size(); ++i) {
         size_t suffix_pos = source_paths[i].find_last_of('.');
-        std::string expanded = source_paths[i].substr(0, suffix_pos) + "_expand" + source_paths[i].substr(suffix_pos);
+        std::string base_name = llvm::sys::path::filename(source_paths[i]).str();
+        std::string expanded = "source_instrumented/" + base_name.substr(0, suffix_pos) + base_name.substr(suffix_pos);
         std::string path_str = getenv("JSI_HOST_INCLUDE_PATH");
         std::vector<std::string> include_paths = split(path_str, ':');
-        // std::string command = "clang -E " + source_paths[i] + " -o " + expanded + " -I/thfs3/software/programming_env/mt3000_programming_env/hthreads/include -I/thfs3/software/programming_env/mt3000_programming_env/dsp_compiler/include/";
-        system("g++ -v");
-        std::string command = "g++ -E -dD -std=c++17 -DMATRIX " + source_paths[i] + " -o " + expanded;
+        std::string command = "clang++ -E -DMATRIX -D_GNU_SOURCE " + source_paths[i] + " -o " + expanded;
         for (const auto& path : include_paths) {
             command += " -I" + path;
         }
@@ -123,10 +142,16 @@ int main(int argc, const char **argv) {
         int res = system(command.c_str());
         if (res) return res;
         source_paths[i] = expanded;
-        std::cerr << "Compile successed!" << std::endl;
     }
 
     // ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
     ClangTool Tool(OptionsParser.getCompilations(), source_paths);
+
+    std::vector<std::string> ExtraArgs;
+    ExtraArgs.push_back("-ferror-limit=0");
+    ExtraArgs.push_back("-w");
+    Tool.appendArgumentsAdjuster(getInsertArgumentAdjuster(ExtraArgs, ArgumentInsertPosition::BEGIN));
+
+
     return Tool.run(newFrontendActionFactory<MyFrontendAction>().get());
 }

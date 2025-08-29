@@ -6,7 +6,7 @@ SET(HEADER ${JSI_INCLUDE}/record/record_type.h ${JSI_INCLUDE}/record/record_read
 add_executable(timeslice_analysis_all driver.cpp dependancy_graph.cpp ../timeline/alignment.cpp ${HEADER})
 
 target_compile_features(timeslice_analysis_all PRIVATE cxx_std_17)
-target_include_directories(timeslice_analysis_all PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS})
-target_link_libraries(timeslice_analysis_all ${JSI_LIBRARY} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES})
+target_include_directories(timeslice_analysis_all PRIVATE ${JSI_INCLUDE} ./ ${LIBDWARF_INCLUDE_DIRS} ${LIBELF_INCLUDE_DIRS} ${LLVMOpenMP_INCLUDE_DIRS})
+target_link_libraries(timeslice_analysis_all ${JSI_LIBRARY} ${LIBDWARF_LIBRARIES} ${LIBELF_LIBRARIES} ${LLVMOpenMP_LIBRARIES})
 
 install(TARGETS timeslice_analysis_all DESTINATION bin)

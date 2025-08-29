@@ -23,6 +23,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <atomic>
+#include <set>
 
 #include <pthread.h>
 #include <mpi.h>
@@ -33,6 +34,10 @@
 #ifndef RTLD_NEXT
 #define RTLD_NEXT ((void *) -1l)
 #endif
+
+std::set<pthread_t>* threads;
+
+pthread_mutex_t threads_lock;
 
 bool enable_pthread_collect = false;
 
@@ -140,6 +145,10 @@ void jsi_pthread_tracer_init() {
 __attribute__((destructor (PTHREAD_WRAPPER_INIT_PRIORITY)))
 void jsi_pthread_tracer_finalize() { 
     jsi_pthread_wrapper_fini_completed.store(1);
+    // for (auto thread: threads)
+    // {
+    //     JSI_LOG(JSILOG_INFO, "jsi_pthread_tracer_finalize have THREDID %p\n", thread);
+    // }
     JSI_LOG(JSILOG_INFO, "Finalize JSI PTHREAD Wrapper Library.\n");
 }
 
@@ -205,9 +214,11 @@ void* wrapped_start_routine(void* arg) {
 
     void* result = original_start(original_args);
     
-    // jsi_thread_data_mark_finalized();
-    // record_fini_thread();
     jsi_thread_finalize();
+
+    real_pthread_mutex_lock(&threads_lock);
+    threads->erase(pthread_self());
+    real_pthread_mutex_unlock(&threads_lock);
 
     free(args);
 
@@ -328,7 +339,9 @@ void jsi_exit_pthread_detach(record_pthread_detach_t* rec, pthread_t thread) {
 inline __attribute__((always_inline))
 record_pthread_exit_t* jsi_enter_pthread_exit(record_pthread_exit_t* rec, uint16_t MsgType) {
     rec[0].record.MsgType = (int16_t)MsgType;
-    rec[0].record.timestamps.enter = get_tsc_raw();
+    uint64_t t = get_tsc_raw();
+    rec[0].record.timestamps.enter = t;
+    rec[0].record.timestamps.exit = t;
     rec[0].thread_id = _ConfigHelper::get_tid();
     // JSI_LOG(JSILOG_INFO, "pthread_exit1.\n");
 #ifdef ENABLE_BACKTRACE
@@ -342,23 +355,25 @@ record_pthread_exit_t* jsi_enter_pthread_exit(record_pthread_exit_t* rec, uint16
         pmu_collector_get_all(counters);
     }
 #endif
+    RecordWriter::traceStore((const record_t*)rec);
+    DEALLOCATE(rec, sizeof(record_pthread_exit_t) + sizeof(uint64_t) * jsi_pmu_num);
     return rec;
 }
 
-inline __attribute__((always_inline))
-void jsi_exit_pthread_exit(record_pthread_exit_t* rec) {
-    record_pthread_exit_t& p_rec = reinterpret_cast<record_pthread_exit_t*>(rec)[0];
-    p_rec.record.timestamps.exit = get_tsc_raw();
-    // JSI_LOG(JSILOG_INFO, "pthread_exit3.\n");
-#ifdef ENABLE_PMU
-    if (jsi_pmu_enabled) {
-        uint64_t* counters = RecordWriterHelper::counters(reinterpret_cast<record_pthread_exit_t*>(rec));
-        pmu_collector_get_all(counters + jsi_pmu_num);
-    }
-#endif
-    RecordWriter::traceStore((const record_t*)rec);
-    DEALLOCATE(rec, sizeof(record_pthread_exit_t) + sizeof(uint64_t) * 2 * jsi_pmu_num);
-}
+// inline __attribute__((always_inline))
+// void jsi_exit_pthread_exit(record_pthread_exit_t* rec) {
+//     record_pthread_exit_t& p_rec = reinterpret_cast<record_pthread_exit_t*>(rec)[0];
+//     p_rec.record.timestamps.exit = get_tsc_raw();
+//     // JSI_LOG(JSILOG_INFO, "pthread_exit3.\n");
+// #ifdef ENABLE_PMU
+//     if (jsi_pmu_enabled) {
+//         uint64_t* counters = RecordWriterHelper::counters(reinterpret_cast<record_pthread_exit_t*>(rec));
+//         pmu_collector_get_all(counters + jsi_pmu_num);
+//     }
+// #endif
+//     RecordWriter::traceStore((const record_t*)rec);
+//     DEALLOCATE(rec, sizeof(record_pthread_exit_t) + sizeof(uint64_t) * 2 * jsi_pmu_num);
+// }
 
 inline __attribute__((always_inline))
 record_pthread_mutex_init_t* jsi_enter_pthread_mutex_init(record_pthread_mutex_init_t* rec, uint16_t MsgType) {
