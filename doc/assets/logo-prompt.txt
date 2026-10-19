@@ -1,0 +1,22 @@
+MSToolkit logo provenance
+Created: 2026-10-19
+Mode: built-in image_gen tool; generation followed by a wordmark-color edit.
+Output: mstoolkit-logo.png (transparent PNG; generated alpha preserved)
+
+Generation prompt:
+Use case: logo-brand
+Asset type: finished horizontal transparent PNG logo for the GitHub README of MSToolkit, a Multi-Scale Toolkit for high-performance computing performance tracing and analysis.
+Primary request: design one original, polished research-software identity. A compact geometric M-shaped emblem made from three parallel trace paths, beside the precise wordmark MSToolkit. The traces suggest multiple scales, aligned computation and performance measurement without literal charts.
+Style/medium: crisp flat vector-like edges in a raster output, restrained, professional, timeless; excellent silhouette and readable when displayed 420 pixels wide.
+Composition/framing: wide horizontal lockup, emblem left and wordmark right, balanced optical spacing, close crop with modest even padding; no layout board, just one final logo.
+Color palette: restrained saturated blue and teal emblem; medium blue-gray wordmark chosen to remain visible on both white and dark GitHub backgrounds.
+Text (verbatim): "MSToolkit". Spell exactly M S T o o l k i t, mixed case as shown. Clean modern semibold sans-serif, consistent letter spacing.
+Background: genuinely transparent alpha channel, no colored rectangle and no checkerboard rendered into the image.
+Constraints: no additional words, no slogan, no shadows, no glow, no gradients, no 3D, no watermark, no mockup, no neural-network nodes, no atom, no borrowed vLLM logo or other existing brand identity.
+
+Final edit prompt:
+Use case: precise-object-edit
+Edit target: the provided transparent MSToolkit logo.
+Change only the wordmark color: recolor every letter of "MSToolkit" to a single uniform medium slate blue, exactly #7188A8, to improve legibility on dark GitHub backgrounds while remaining readable on white.
+Preserve all other features exactly: emblem shape, emblem colors, exact text, typography, relative sizes, geometry, placement and padding. Preserve true transparent alpha background. No gradients, effects, shadows, additional text, white background or checkerboard.
+
